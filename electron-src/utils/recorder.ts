@@ -185,6 +185,7 @@ export const stopRecording = async () => {
                 .run();
             }
           }
+          //! issue with cancel ( the tem folder should be deleted and recording should be stopped)
           // Close the dialog window
           dialogWindow?.close();
           dialogWindow = null;

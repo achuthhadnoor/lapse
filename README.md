@@ -28,4 +28,12 @@
 
 - default save location
 
-- checkbox to open the finder window on stop recording.
+- checkbox to open the finder window on stop recording
+
+## THINGS WORK ON 
+
+- Pause icon
+
+- show timer in menubar
+
+- show export options when user paused ( resume/ stop recording )

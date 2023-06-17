@@ -32,6 +32,7 @@ let tray: Tray | null = null;
 export const appIcon = join(__dirname, "../../build/appTemplate.png");
 export const recordIcon = join(__dirname, "../../build/recordTemplate.png");
 export const loadingIcon = join(__dirname, "../../build/loadingTemplate.png");
+// export const pauseIcon = join(__dirname, "../../build/pauseTemplate.png");
 
 export const setTrayTitle = (title: string) => {
   tray?.setTitle(title);
@@ -353,14 +354,22 @@ export const setRenderingTray = () => {
 };
 
 export const idelTrayMenu = () => {
-  tray?.setImage(appIcon);
+  tray?.setImage(
+    process.platform === "darwin" ? appIcon : nativeImage.createEmpty()
+  );
+  process.platform !== "darwin" && tray?.setTitle("lapse");
+
   tray?.setToolTip("Lapse | Start recording");
   tray?.setTitle("");
   tray?.popUpContextMenu(getContextMenu());
 };
 
 export const initializeTray = () => {
-  tray = new Tray(appIcon);
+  tray = new Tray(
+    process.platform === "darwin" ? appIcon : nativeImage.createEmpty()
+  );
+  process.platform !== "darwin" && tray.setTitle("lapse");
+
   tray?.setToolTip("Lapse | Start recording");
   tray?.on("click", () => {
     switch (getRecordingState()) {
