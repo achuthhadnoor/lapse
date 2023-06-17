@@ -32,6 +32,12 @@
 
 ## THINGS WORK ON 
 
+- fix microphone status indicator  icon in screen selection
+
+- images should be in fixed height and width in screen selection window
+
+- notifications are missing
+
 - Pause icon
 
 - show timer in menubar
