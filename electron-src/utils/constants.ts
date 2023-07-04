@@ -1,6 +1,13 @@
 import { app } from "electron";
+import { is } from "electron-util";
 
-export const USER_DEFAULT = {
+export const USER_DEFAULT = is.development ? {
+  id: "0",
+  email: "hi@achuth.dev",
+  code: "DEVIL_MAY_CRY",
+  name: "Achuth Hadnoor",
+  isVerified: true,
+} : {
   id: "",
   email: "",
   code: "",
@@ -27,6 +34,7 @@ export const SETTINGS_DEFAULT = {
   savePath: SAVE_PATH_DEFAULT,
   height: "1080",
   width: "1920",
+  displayHideList: [] // ? Contains list of screens/apps to hide while starting to record ; {name,id,imageAsdataURI,byDev}
 };
 
 export const DEFAULT_STATE = {

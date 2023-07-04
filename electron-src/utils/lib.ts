@@ -22,7 +22,6 @@ export const checkIfAppIsOpen = () => {
   }
 };
 
-
 export const sendUpdateRequest = (click: boolean) => {
   // get latest version number and compare with app.getVersion() and send notification to user
   const url = is.development
@@ -93,7 +92,11 @@ export const checkUpdates = () => {
   }
 };
 
-export const tempWindow = () => {
+export const createTempWindow = ({
+  windowOptions,
+  screenName,
+  func
+}: any) => {
   const screenBounds = screen.getDisplayNearestPoint(
     screen.getCursorScreenPoint()
   ).bounds;
@@ -104,24 +107,37 @@ export const tempWindow = () => {
     alwaysOnTop: true,
     transparent: true,
     frame: false,
+    webPreferences: {
+      // devTools: true,
+      nodeIntegration: true,
+      allowRunningInsecureContent: true,
+      preload: join(__dirname, "../preload.js"),
+    },
+    ...windowOptions
   });
   // Load a blank HTML page
   const url = is.development
-    ? "http://localhost:8000/empty"
+    ? `http://localhost:8000/${screenName}`
     : format({
-        pathname: join(__dirname, "../../renderer/out/empty.html"),
-        protocol: "file:",
-        slashes: true,
-      });
+      pathname: join(__dirname, `../../renderer/out/${screenName}.html`),
+      protocol: "file:",
+      slashes: true,
+    });
   dialogWindow.loadURL(url);
 
   // When the window is ready, show the dialog
   dialogWindow.webContents.on("did-finish-load", () => {
     // do the logic here
+    func && func();
   });
-
   // Handle the dialog window being closed
   dialogWindow.on("closed", () => {
     dialogWindow = null;
   });
+  return dialogWindow;
 };
+
+export const getGlobalShortCut = () => {
+  // ! Here we need to handle global shortcuts 
+  return 'meta+option+l'
+}

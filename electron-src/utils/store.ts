@@ -5,10 +5,10 @@ import { DEFAULT_STATE } from "./constants";
 export const store = new Store();
 
 export const loadAppData = () => {
+  app.lapse = DEFAULT_STATE;
   // ? only un comment to clear the data including licence
   // store.set("lapse-settings", app.lapse.settings);
   // store.set("lapse-user", app.lapse.user);
-  app.lapse = DEFAULT_STATE;
 
   if (store.get("lapse-user")) {
     app.lapse.user = store.get("lapse-user");

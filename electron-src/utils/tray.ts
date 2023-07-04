@@ -10,7 +10,7 @@ import {
 } from "electron";
 import { MenuItemConstructorOptions } from "electron/main";
 import { join } from "path";
-import { autoLauncher } from "./lib";
+import { autoLauncher, getGlobalShortCut } from "./lib";
 import {
   getRecordingState,
   IDLE,
@@ -32,7 +32,7 @@ let tray: Tray | null = null;
 export const appIcon = join(__dirname, "../../build/appTemplate.png");
 export const recordIcon = join(__dirname, "../../build/recordTemplate.png");
 export const loadingIcon = join(__dirname, "../../build/loadingTemplate.png");
-// export const pauseIcon = join(__dirname, "../../build/pauseTemplate.png");
+export const pauseIcon = join(__dirname, "../../build/pauseTemplate.png");
 
 export const setTrayTitle = (title: string) => {
   tray?.setTitle(title);
@@ -49,6 +49,7 @@ const prepareFormatMenu: () => MenuItemConstructorOptions[] = () => {
     },
   }));
 };
+
 const prepareQualityMenu: () => MenuItemConstructorOptions[] = () => {
   const options = ["auto", "4k", "1080p", "720p", "480p", "360p"];
   return options.map((option) => ({
@@ -60,6 +61,7 @@ const prepareQualityMenu: () => MenuItemConstructorOptions[] = () => {
     },
   }));
 };
+
 const prepareFramerateMenu: () => MenuItemConstructorOptions[] = () => {
   const options = [12, 24, 30, 60];
   return options.map((option) => ({
@@ -71,13 +73,15 @@ const prepareFramerateMenu: () => MenuItemConstructorOptions[] = () => {
     },
   }));
 };
+
 const updateSettings = (newsettings: any) => {
   app.lapse.settings = {
     ...app.lapse.settings,
     ...newsettings,
   };
 };
-const getContextMenu = () => {
+
+const getIdelContextMenu = () => {
   const { autolaunch, intervals, savePath, countdown } = app.lapse.settings;
   const intervalSettings: () => MenuItemConstructorOptions[] = () => {
     const options = [2, 3, 4, 5];
@@ -93,12 +97,17 @@ const getContextMenu = () => {
   const template: MenuItemConstructorOptions[] = [
     {
       label: "Start recording",
-      accelerator: "meta+option+l",
-      click: () => {
-        startRecording().then(() => {
+      accelerator: getGlobalShortCut(),
+      click: async () => {
+        try {
+          await startRecording();
+          // ? We change the icon and tooltip to let user know the selected screen is recording.
           tray?.setImage(recordIcon);
           tray?.setToolTip("Recording...");
-        });
+        } catch (error) {
+          // ! Global fallback when recording is interrupted 
+
+        }
       },
     },
     { type: "separator" },
@@ -170,14 +179,17 @@ const getContextMenu = () => {
         const url = is.development
           ? "http://localhost:8000/empty"
           : format({
-              pathname: join(__dirname, "../../renderer/out/empty.html"),
-              protocol: "file:",
-              slashes: true,
-            });
+            pathname: join(__dirname, "../../renderer/out/empty.html"),
+            protocol: "file:",
+            slashes: true,
+          });
         dialogWindow.loadURL(url);
         // When the window is ready, show the dialog
         dialogWindow.webContents.on("did-finish-load", () => {
-          dialogWindow && dialogWindow.focus();
+          if (dialogWindow) {
+            debugger;
+            dialogWindow.focus();
+          }
           dialogWindow &&
             dialog
               .showOpenDialog(dialogWindow, {
@@ -343,7 +355,7 @@ const getPausedContextmenu = () => {
 };
 
 const setPausedTray = () => {
-  tray?.setImage(appIcon);
+  tray?.setImage(pauseIcon);
   tray?.setToolTip("Paused");
   tray?.popUpContextMenu(getPausedContextmenu());
 };
@@ -361,22 +373,30 @@ export const idelTrayMenu = () => {
 
   tray?.setToolTip("Lapse | Start recording");
   tray?.setTitle("");
-  tray?.popUpContextMenu(getContextMenu());
+  tray?.popUpContextMenu(getIdelContextMenu());
 };
 
 export const initializeTray = () => {
+  // ? Create a tray in the menubar
   tray = new Tray(
     process.platform === "darwin" ? appIcon : nativeImage.createEmpty()
   );
+  /* 
+    ? In windows the icon should be colored or show the name of the app in the taskbar
+    ? or check if dark mode and light mode and change the icon programmatically
+  */
   process.platform !== "darwin" && tray.setTitle("lapse");
-
   tray?.setToolTip("Lapse | Start recording");
+
+  // ? Here is where all the content menu is prepared and shown to the user 
   tray?.on("click", () => {
+    // ?  Based on the state of the Recording show the contextMenus ( Idel, recording, paused )
     switch (getRecordingState()) {
       case IDLE:
         idelTrayMenu();
         break;
       case RECORDING:
+        // ! maybe put the text or change to pause icon in the try as paused to indicate paused state 
         pauseRecording();
         setPausedTray();
         break;
@@ -387,9 +407,8 @@ export const initializeTray = () => {
         // setRenderingTray();
         break;
       default:
-        tray?.popUpContextMenu(getContextMenu());
+        tray?.popUpContextMenu(getIdelContextMenu());
         break;
     }
   });
 };
-export { sendUpdateRequest };

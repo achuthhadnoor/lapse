@@ -9,8 +9,8 @@ import {
 import { path as _path } from "@ffmpeg-installer/ffmpeg";
 import { track, cleanupSync, mkdir } from "temp";
 import { join } from "path";
-import { autoLauncher } from "./lib";
-import {store} from './store'
+import { autoLauncher, createTempWindow } from "./lib";
+import { store } from './store'
 import { platform } from "os";
 import { writeFileSync } from "fs";
 import { format } from "url";
@@ -107,10 +107,10 @@ export const stopRecording = async () => {
   const url = is.development
     ? "http://localhost:8000/empty"
     : format({
-        pathname: join(__dirname, "../../renderer/out/empty.html"),
-        protocol: "file:",
-        slashes: true,
-      });
+      pathname: join(__dirname, "../../renderer/out/empty.html"),
+      protocol: "file:",
+      slashes: true,
+    });
   dialogWindow.loadURL(url);
 
   // When the window is ready, show the dialog
@@ -208,7 +208,7 @@ export const stopRecording = async () => {
   });
 };
 
-export const processRecording = () => {};
+export const processRecording = () => { };
 
 export const resumeRecording = () => {
   recordState = RECORDING;
@@ -217,83 +217,61 @@ export const resumeRecording = () => {
 
 export const pauseRecording = () => {
   // send a notification saying recording paused
-  showNotification("Recording pause!");
   recordState = PAUSED;
   clearInterval(interval);
 };
 
 export const startRecording = async () => {
-  return new Promise(async (resolve, reject) => {
-    sourceId = await selectSource();
-    if (sourceId) {
-      frameCount = 0;
-      mkdir("lapse_images", (err: any, dirPath: any) => {
-        if (err) {
-          // show an alert dialog box
-          console.log("====================================");
-          console.log(err);
-          console.log("====================================");
-          return reject(err);
-        }
-        imagesDir = dirPath;
-        ffmpegImgPattern = join(imagesDir, "lapse%d.png");
-      });
-      recordState = RECORDING;
-      if (app.lapse.settings.countdown) {
-        // create a temp browser window to show timer and close it once
-        const screenBounds = screen.getDisplayNearestPoint(
-          screen.getCursorScreenPoint()
-        ).bounds;
-        let dialogWindow: BrowserWindow | null = new BrowserWindow({
-          height: screenBounds.height,
-          width: screenBounds.width,
-          // show: false, // Create the window initially hidden
-          alwaysOnTop: true,
-          transparent: true,
-          frame: false,
-          webPreferences: {
-            // devTools: true,
-            nodeIntegration: true,
-            allowRunningInsecureContent: true,
-            preload: join(__dirname, "../preload.js"),
-          },
-        });
-        // Load a blank HTML page
-        const url = is.development
-          ? "http://localhost:8000/timer"
-          : format({
-              pathname: join(__dirname, "../../renderer/out/timer.html"),
-              protocol: "file:",
-              slashes: true,
-            });
-        dialogWindow.loadURL(url);
-        dialogWindow.webContents.on("did-finish-load", () => {});
-        // Handle the dialog window being closed
-        dialogWindow.on("closed", () => {
-          dialogWindow = null;
-        });
-        ipcMain.on("done-timer", () => {
-          dialogWindow?.close();
-          createScreenshotInterval(sourceId);
-        });
-        resolve("");
-      } else {
-        createScreenshotInterval(sourceId);
-      }
-    } else {
-      reject("could not start Recording");
+  // ? We resolve this promise if recording started or we tell user if it fails 
+  sourceId = await selectSource();
+  frameCount = 0;
+
+  // ! add custom images save location
+  mkdir("lapse_images", (err: any, dirPath: any) => {
+    err = 'Cannot create a directory'
+    if (err) {
+      console.log("====================================");
+      console.log(err);
+      console.log("====================================");
+      throw err
     }
+    ffmpegImgPattern = join(dirPath, "lapse%d.png");
+    imagesDir = dirPath;
   });
+  // ? set recording state
+  recordState = RECORDING;
+  // ? Check if countdown is enabled
+  if (app.lapse.settings.countdown) {
+    // ? create a temp browser window to show timer and close it once
+    const dialogWindow = createTempWindow({
+      windowOptions: { show: true }
+    })
+    ipcMain.on("done-timer", () => {
+      dialogWindow?.close();
+      createScreenshotInterval(sourceId);
+    });
+  } else {
+    createScreenshotInterval(sourceId);
+  }
 };
 
 async function selectSource() {
+  /*
+   ? This function pops up a window to select the screen/ app to record.
+   ! give an option for user to select the screens that can be added to hide list in this from next time
+  */
   let selectedSourceId: string = "0";
   let closeWindowMessage = false;
+
+  // ? gets all the available sources and their metadata
   const sources = await desktopCapturer.getSources({
     types: ["window", "screen"],
     thumbnailSize: screen.getPrimaryDisplay().bounds,
   });
+
+  // ! By default set the Entire screen as default 
   selectedSourceId = sources[0].id;
+
   return new Promise(async (resolve, reject) => {
     try {
       let window = new BrowserWindow({
@@ -316,10 +294,10 @@ async function selectSource() {
       const url = is.development
         ? "http://localhost:8000/screens"
         : format({
-            pathname: join(__dirname, "../../renderer/out/screens.html"),
-            protocol: "file:",
-            slashes: true,
-          });
+          pathname: join(__dirname, "../../renderer/out/screens.html"),
+          protocol: "file:",
+          slashes: true,
+        });
 
       window.loadURL(url);
       is.development && window.webContents.openDevTools({ mode: "detach" });
