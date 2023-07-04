@@ -46,7 +46,7 @@ const close = () => {
 
 const windowOpenCheck = () => isOpen;
 
-export default windowManager.setMainWindow({
+export default windowManager.setLicenseWindow({
   open: createBrowserWindow,
   close,
   isOpen: windowOpenCheck,

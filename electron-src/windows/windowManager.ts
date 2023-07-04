@@ -1,4 +1,4 @@
-export interface mainWindowManager {
+export interface licenseWindowManager {
   open: () => void;
   isOpen: () => boolean;
   close: () => void;
@@ -30,19 +30,19 @@ export interface screensWindowManager {
 }
 
 export class WindowManager {
-  main?: mainWindowManager;
+  license?: licenseWindowManager;
   recorder?: recorderWindowManager;
   settings?: settingsWindowManager;
   screens?: screensWindowManager;
 
   closeAll = () => {
-    this.main?.close();
+    this.license?.close();
     this.settings?.close();
     this.recorder?.close();
   };
 
-  setMainWindow = (mainManager: mainWindowManager) => {
-    this.main = mainManager;
+  setLicenseWindow = (licenseManager: licenseWindowManager) => {
+    this.license = licenseManager;
   };
   setRecorderWindow = (recorderManager: recorderWindowManager) => {
     this.recorder = recorderManager;

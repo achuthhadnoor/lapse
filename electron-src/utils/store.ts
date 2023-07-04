@@ -4,7 +4,7 @@ import { DEFAULT_STATE } from "./constants";
 
 export const store = new Store();
 
-export const getAppData = () => {
+export const loadAppData = () => {
   // ? only un comment to clear the data including licence
   // store.set("lapse-settings", app.lapse.settings);
   // store.set("lapse-user", app.lapse.user);

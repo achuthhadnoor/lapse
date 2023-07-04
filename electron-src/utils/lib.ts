@@ -3,8 +3,27 @@ import { is } from "electron-util";
 import { join } from "path";
 import { format } from "url";
 import AutoLaunch from "auto-launch";
+import { store } from "./store";
 
-export const checkForUpdates = (click: boolean) => {
+export const autoLauncher = new AutoLaunch({
+  name: "Lapse",
+  path: "/Applications/Lapse.app",
+});
+
+export const checkIfAppIsOpen = () => {
+  const gotTheLock = app.requestSingleInstanceLock();
+
+  if (!gotTheLock) {
+    app.quit();
+  } else {
+    app.on("second-instance", () => {
+      app.focus();
+    });
+  }
+};
+
+
+export const sendUpdateRequest = (click: boolean) => {
   // get latest version number and compare with app.getVersion() and send notification to user
   const url = is.development
     ? "http://localhost:3000/api/updates"
@@ -59,6 +78,21 @@ export const checkForUpdates = (click: boolean) => {
   request.end();
 };
 
+export const checkUpdates = () => {
+  if (store.get("lapse-updateDate")) {
+    const savedDate = store.get("lapse-updateDate");
+    const dates = new Date();
+    const dateString = `${dates.getDate()}-${dates.getMonth()}-${dates.getFullYear()}`;
+    if (savedDate !== dateString) {
+      sendUpdateRequest(false);
+    }
+  } else {
+    const dates = new Date();
+    const dateString = `${dates.getDate()}-${dates.getMonth()}-${dates.getFullYear()}`;
+    store.set("lapse-updateDate", dateString);
+  }
+};
+
 export const tempWindow = () => {
   const screenBounds = screen.getDisplayNearestPoint(
     screen.getCursorScreenPoint()
@@ -90,21 +124,4 @@ export const tempWindow = () => {
   dialogWindow.on("closed", () => {
     dialogWindow = null;
   });
-};
-
-export const autoLauncher = new AutoLaunch({
-  name: "Lapse",
-  path: "/Applications/Lapse.app",
-});
-
-export const checkIfAppIsOpen = () => {
-  const gotTheLock = app.requestSingleInstanceLock();
-
-  if (!gotTheLock) {
-    app.quit();
-  } else {
-    app.on("second-instance", () => {
-      app.focus();
-    });
-  }
 };

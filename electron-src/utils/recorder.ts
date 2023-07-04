@@ -9,7 +9,8 @@ import {
 import { path as _path } from "@ffmpeg-installer/ffmpeg";
 import { track, cleanupSync, mkdir } from "temp";
 import { join } from "path";
-import { autoLauncher, store } from "..";
+import { autoLauncher } from "./lib";
+import {store} from './store'
 import { platform } from "os";
 import { writeFileSync } from "fs";
 import { format } from "url";

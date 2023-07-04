@@ -1,5 +1,5 @@
 import { app, ipcMain, net } from "electron";
-import { store } from "./index";
+import { store } from "./utils/store";
 import { initializeTray } from "./utils/tray";
 import { windowManager } from "./windows/windowManager";
 
@@ -44,7 +44,7 @@ export default function init() {
     };
     app.lapse.user = user;
     store.set("lapse-user", app.lapse.user);
-    windowManager.main?.close();
+    windowManager.license?.close();
     // createTray();
     initializeTray();
   });

@@ -10,7 +10,7 @@ import {
 } from "electron";
 import { MenuItemConstructorOptions } from "electron/main";
 import { join } from "path";
-import { autoLauncher } from "..";
+import { autoLauncher } from "./lib";
 import {
   getRecordingState,
   IDLE,
@@ -22,7 +22,7 @@ import {
   startRecording,
   stopRecording,
 } from "./recorder";
-import { checkForUpdates } from "./lib";
+import { sendUpdateRequest } from "./lib";
 import { is } from "electron-util";
 import { format } from "url";
 
@@ -302,7 +302,7 @@ const getContextMenu = () => {
     {
       label: "Check for updates",
       click: () => {
-        checkForUpdates(true);
+        sendUpdateRequest(true);
       },
     },
     {
@@ -392,4 +392,4 @@ export const initializeTray = () => {
     }
   });
 };
-export { checkForUpdates };
+export { sendUpdateRequest };
