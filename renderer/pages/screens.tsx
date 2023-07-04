@@ -76,40 +76,70 @@ export default function Screens() {
         <div className=" flex flex-col dragable text-neutral-800 dark:text-neutral-100 h-screen pb-5">
           <div className="flex items-center justify-between p-4">
             <div>Select Screen</div>
-            <span
-              className=" text-neutral-800 dark:text-neutral-100"
-              onClick={getSources}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div className="flex gap-2 align-middle text-neutral-800 dark:text-neutral-100">
+              <span className=" p-2" onClick={getSources}>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M17.25 3V7.5H12.75"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M0.75 15V10.5H5.25"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M2.6325 6.75006C3.01288 5.67515 3.65935 4.71411 4.5116 3.95662C5.36385 3.19913 6.3941 2.66988 7.50621 2.41825C8.61833 2.16662 9.77607 2.20081 10.8714 2.51764C11.9667 2.83446 12.9639 3.42359 13.77 4.23006L17.25 7.50006M0.75 10.5001L4.23 13.7701C5.03606 14.5765 6.03328 15.1657 7.12861 15.4825C8.22393 15.7993 9.38167 15.8335 10.4938 15.5819C11.6059 15.3302 12.6361 14.801 13.4884 14.0435C14.3407 13.286 14.9871 12.325 15.3675 11.2501"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span
+                className="p-2"
+                onClick={() => {
+                  window.electron.ipcRenderer.send("close-screen", {
+                    status: "close",
+                  });
+                }}
               >
-                <path
-                  d="M17.25 3V7.5H12.75"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M0.75 15V10.5H5.25"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M2.6325 6.75006C3.01288 5.67515 3.65935 4.71411 4.5116 3.95662C5.36385 3.19913 6.3941 2.66988 7.50621 2.41825C8.61833 2.16662 9.77607 2.20081 10.8714 2.51764C11.9667 2.83446 12.9639 3.42359 13.77 4.23006L17.25 7.50006M0.75 10.5001L4.23 13.7701C5.03606 14.5765 6.03328 15.1657 7.12861 15.4825C8.22393 15.7993 9.38167 15.8335 10.4938 15.5819C11.6059 15.3302 12.6361 14.801 13.4884 14.0435C14.3407 13.286 14.9871 12.325 15.3675 11.2501"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </span>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M18 6L6 18"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  ></path>
+                  <path
+                    d="M6 6L18 18"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  ></path>
+                </svg>
+              </span>
+            </div>
           </div>
           {/* <div className="flex flex-1"> */}
           <div className="flex-1 py-5 max-h-screen overflow-auto grid grid-cols-2 px-5 gap-2 align-middle dark:text-neutral-400 text-neutral-800">

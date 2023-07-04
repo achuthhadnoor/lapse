@@ -223,21 +223,21 @@ export const pauseRecording = () => {
 
 export const startRecording = async () => {
   return new Promise(async (resolve, reject) => {
-    frameCount = 0;
-    mkdir("lapse_images", (err: any, dirPath: any) => {
-      if (err) {
-        // show an alert dialog box
-        console.log("====================================");
-        console.log(err);
-        console.log("====================================");
-        return reject(err);
-      }
-      imagesDir = dirPath;
-      ffmpegImgPattern = join(imagesDir, "lapse%d.png");
-    });
-    recordState = RECORDING;
     sourceId = await selectSource();
     if (sourceId) {
+      frameCount = 0;
+      mkdir("lapse_images", (err: any, dirPath: any) => {
+        if (err) {
+          // show an alert dialog box
+          console.log("====================================");
+          console.log(err);
+          console.log("====================================");
+          return reject(err);
+        }
+        imagesDir = dirPath;
+        ffmpegImgPattern = join(imagesDir, "lapse%d.png");
+      });
+      recordState = RECORDING;
       if (app.lapse.settings.countdown) {
         // create a temp browser window to show timer and close it once
         const screenBounds = screen.getDisplayNearestPoint(
@@ -287,6 +287,7 @@ export const startRecording = async () => {
 
 async function selectSource() {
   let selectedSourceId: string = "0";
+  let closeWindowMessage = false;
   const sources = await desktopCapturer.getSources({
     types: ["window", "screen"],
     thumbnailSize: screen.getPrimaryDisplay().bounds,
@@ -327,9 +328,16 @@ async function selectSource() {
         selectedSourceId = args.id;
         window.close();
       });
-
+      ipcMain.once("close-screen", (_e, _args) => {
+        window.close();
+        closeWindowMessage = true;
+      });
       window.on("closed", () => {
-        resolve(selectedSourceId);
+        if (closeWindowMessage) {
+          closeWindowMessage = false;
+        } else {
+          resolve(selectedSourceId);
+        }
       });
     } catch (error) {
       // console.log(`error: ${error}`);

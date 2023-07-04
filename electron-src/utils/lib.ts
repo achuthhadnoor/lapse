@@ -2,6 +2,7 @@ import { BrowserWindow, app, dialog, net, screen, shell } from "electron";
 import { is } from "electron-util";
 import { join } from "path";
 import { format } from "url";
+import AutoLaunch from "auto-launch";
 
 export const checkForUpdates = (click: boolean) => {
   // get latest version number and compare with app.getVersion() and send notification to user
@@ -89,4 +90,21 @@ export const tempWindow = () => {
   dialogWindow.on("closed", () => {
     dialogWindow = null;
   });
+};
+
+export const autoLauncher = new AutoLaunch({
+  name: "Lapse",
+  path: "/Applications/Lapse.app",
+});
+
+export const checkIfAppIsOpen = () => {
+  const gotTheLock = app.requestSingleInstanceLock();
+
+  if (!gotTheLock) {
+    app.quit();
+  } else {
+    app.on("second-instance", () => {
+      app.focus();
+    });
+  }
 };
