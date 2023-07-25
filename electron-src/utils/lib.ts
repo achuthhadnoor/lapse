@@ -72,7 +72,6 @@ export const sendUpdateRequest = (click: boolean) => {
     console.log("====================================");
     console.log(err);
     console.log("====================================");
-    debugger;
   });
   request.end();
 };
@@ -92,11 +91,7 @@ export const checkUpdates = () => {
   }
 };
 
-export const createTempWindow = ({
-  windowOptions,
-  screenName,
-  func
-}: any) => {
+export const createTempWindow = ({ windowOptions, screenName, func }: any) => {
   const screenBounds = screen.getDisplayNearestPoint(
     screen.getCursorScreenPoint()
   ).bounds;
@@ -113,17 +108,18 @@ export const createTempWindow = ({
       allowRunningInsecureContent: true,
       preload: join(__dirname, "../preload.js"),
     },
-    ...windowOptions
+    ...windowOptions,
   });
   // Load a blank HTML page
   const url = is.development
     ? `http://localhost:8000/${screenName}`
     : format({
-      pathname: join(__dirname, `../../renderer/out/${screenName}.html`),
-      protocol: "file:",
-      slashes: true,
-    });
+        pathname: join(__dirname, `../../renderer/out/${screenName}.html`),
+        protocol: "file:",
+        slashes: true,
+      });
   dialogWindow.loadURL(url);
+  is.development && dialogWindow.webContents.openDevTools({ mode: "detach" });
 
   // When the window is ready, show the dialog
   dialogWindow.webContents.on("did-finish-load", () => {
@@ -138,6 +134,6 @@ export const createTempWindow = ({
 };
 
 export const getGlobalShortCut = () => {
-  // ! Here we need to handle global shortcuts 
-  return 'meta+option+l'
-}
+  // ! Here we need to handle global shortcuts
+  return "meta+option+l";
+};

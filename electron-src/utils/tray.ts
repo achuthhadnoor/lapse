@@ -25,6 +25,7 @@ import {
 import { sendUpdateRequest } from "./lib";
 import { is } from "electron-util";
 import { format } from "url";
+import { updateStoreSettings } from "./store";
 
 let tray: Tray | null = null;
 
@@ -79,6 +80,8 @@ const updateSettings = (newsettings: any) => {
     ...app.lapse.settings,
     ...newsettings,
   };
+  //? update store here
+  updateStoreSettings(app.lapse.settings);
 };
 
 const getIdelContextMenu = () => {
@@ -98,16 +101,20 @@ const getIdelContextMenu = () => {
     {
       label: "Start recording",
       accelerator: getGlobalShortCut(),
-      click: async () => {
-        try {
-          await startRecording();
-          // ? We change the icon and tooltip to let user know the selected screen is recording.
-          tray?.setImage(recordIcon);
-          tray?.setToolTip("Recording...");
-        } catch (error) {
-          // ! Global fallback when recording is interrupted 
-
-        }
+      click: () => {
+        startRecording()
+          .then(() => {
+            // ? We change the icon and tooltip to let user know the selected screen is recording.
+            tray?.setImage(recordIcon);
+            tray?.setToolTip("Recording...");
+            console.log(`Recording: Started`);
+          })
+          .catch((error) => {
+            // ! Global fallback when recording is interrupted
+            console.log("====================================");
+            console.log("caught", error);
+            console.log("====================================");
+          });
       },
     },
     { type: "separator" },
@@ -164,6 +171,9 @@ const getIdelContextMenu = () => {
     {
       label: savePath,
       click: () => {
+        console.log("====================================");
+        console.log("savePath", savePath);
+        console.log("====================================");
         const screenBounds = screen.getDisplayNearestPoint(
           screen.getCursorScreenPoint()
         ).bounds;
@@ -179,15 +189,14 @@ const getIdelContextMenu = () => {
         const url = is.development
           ? "http://localhost:8000/empty"
           : format({
-            pathname: join(__dirname, "../../renderer/out/empty.html"),
-            protocol: "file:",
-            slashes: true,
-          });
+              pathname: join(__dirname, "../../renderer/out/empty.html"),
+              protocol: "file:",
+              slashes: true,
+            });
         dialogWindow.loadURL(url);
         // When the window is ready, show the dialog
         dialogWindow.webContents.on("did-finish-load", () => {
           if (dialogWindow) {
-            debugger;
             dialogWindow.focus();
           }
           dialogWindow &&
@@ -195,6 +204,7 @@ const getIdelContextMenu = () => {
               .showOpenDialog(dialogWindow, {
                 properties: ["openDirectory"],
                 buttonLabel: "Choose Folder",
+                defaultPath: savePath,
                 // Add any additional options as needed
               })
               .then((result) => {
@@ -354,7 +364,7 @@ const getPausedContextmenu = () => {
   return Menu.buildFromTemplate(contextmenu);
 };
 
-const setPausedTray = () => {
+export const setPausedTray = () => {
   tray?.setImage(pauseIcon);
   tray?.setToolTip("Paused");
   tray?.popUpContextMenu(getPausedContextmenu());
@@ -388,7 +398,7 @@ export const initializeTray = () => {
   process.platform !== "darwin" && tray.setTitle("lapse");
   tray?.setToolTip("Lapse | Start recording");
 
-  // ? Here is where all the content menu is prepared and shown to the user 
+  // ? Here is where all the content menu is prepared and shown to the user
   tray?.on("click", () => {
     // ?  Based on the state of the Recording show the contextMenus ( Idel, recording, paused )
     switch (getRecordingState()) {
@@ -396,7 +406,7 @@ export const initializeTray = () => {
         idelTrayMenu();
         break;
       case RECORDING:
-        // ! maybe put the text or change to pause icon in the try as paused to indicate paused state 
+        // ? change icon to paused and also display paused state context menu
         pauseRecording();
         setPausedTray();
         break;

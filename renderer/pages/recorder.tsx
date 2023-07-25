@@ -17,13 +17,13 @@ export default function recorder() {
     }
   });
 
-  const startRecording = () => {
-    navigator.mediaDevices
-      .getDisplayMedia({ video: true, audio: false })
-      .then((source) => {
-        debugger;
-      });
-  };
+  // const startRecording = () => {
+  //   navigator.mediaDevices
+  //     .getDisplayMedia({ video: true, audio: false })
+  //     .then((source) => {
+  //       debugger;
+  //     });
+  // };
   return (
     <div
       className={cl(

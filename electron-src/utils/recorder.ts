@@ -2,21 +2,22 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
-  dialog,
+  // dialog,
   ipcMain,
   screen,
+  shell,
 } from "electron";
 import { path as _path } from "@ffmpeg-installer/ffmpeg";
 import { track, cleanupSync, mkdir } from "temp";
 import { join } from "path";
-import { autoLauncher, createTempWindow } from "./lib";
-import { store } from './store'
+import { autoLauncher } from "./lib";
+import { store } from "./store";
 import { platform } from "os";
 import { writeFileSync } from "fs";
 import { format } from "url";
 import ffmpeg from "fluent-ffmpeg";
 import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
-import { idelTrayMenu, setRenderingTray } from "./tray";
+import { idelTrayMenu, setPausedTray, setRenderingTray } from "./tray";
 import showNotification from "../notify";
 import { fixPathForAsarUnpack, is } from "electron-util";
 const { getWindows, activateWindow } = require("mac-windows");
@@ -59,10 +60,6 @@ export const initVariables = () => {
 };
 
 const createScreenshotInterval = (sourceId: string) => {
-  // take screenshot of the screen or app window that is selected
-  if (app.lapse.settings.countdown) {
-    // run a timer and update the title of the menubar icon
-  }
   interval = setInterval(async () => {
     const sources = await desktopCapturer.getSources({
       types: ["window", "screen"],
@@ -80,6 +77,11 @@ const createScreenshotInterval = (sourceId: string) => {
       console.log(filePath);
       writeFileSync(filePath, imgBuffer);
     } else {
+      if (getRecordingState() === RECORDING) {
+        pauseRecording();
+        setPausedTray();
+        return;
+      }
       initVariables();
       console.log(
         source,
@@ -93,122 +95,66 @@ const createScreenshotInterval = (sourceId: string) => {
 export const stopRecording = async () => {
   setRenderingTray();
   recordState = RENDERING;
-  const screenBounds = screen.getDisplayNearestPoint(
-    screen.getCursorScreenPoint()
-  ).bounds;
-  let dialogWindow: BrowserWindow | null = new BrowserWindow({
-    height: screenBounds.height,
-    width: screenBounds.width,
-    show: false, // Create the window initially hidden
-    alwaysOnTop: true,
-    transparent: true,
-    frame: false,
-  });
-  const url = is.development
-    ? "http://localhost:8000/empty"
-    : format({
-      pathname: join(__dirname, "../../renderer/out/empty.html"),
-      protocol: "file:",
-      slashes: true,
-    });
-  dialogWindow.loadURL(url);
-
-  // When the window is ready, show the dialog
-  dialogWindow.webContents.on("did-finish-load", () => {
-    dialogWindow &&
-      dialog
-        .showSaveDialog(dialogWindow, {
-          defaultPath: `lapse-${Date.now()}`, //.${selectedFormat}`,
-        })
-        .then((result) => {
-          if (!result.canceled) {
-            const filePath = result.filePath;
-            if (filePath) {
-              let outputPath: string[] | string = filePath.split("\\");
-              let filename = outputPath[outputPath.length - 1].split(".")[0];
-              outputPath[
-                outputPath.length - 1
-              ] = `${filename}.${app.lapse.settings.format}`; //'mp4'
-              outputPath = outputPath.join("\\");
-
-              let startTime = Date.now();
-              console.log("Start Time Create Timelape " + startTime);
-              const command = ffmpeg();
-              const { framerate, quality } = app.lapse.settings;
-              const qualities: any = {
-                auto: 25,
-                "8k": 6,
-                "4k": 12,
-                "1080p": 18,
-                "720p": 24,
-                "480p": 32,
-                "360p": 38,
-                "270p": 42,
-                "144p": 48,
-              };
-              command
-                .input(ffmpegImgPattern)
-                .inputOptions([
-                  "-y",
-                  `-r ${framerate}`,
-                  "-f image2",
-                  "-start_number 0",
-                ])
-                .outputOptions([
-                  "-c:v libx264",
-                  "-preset slow",
-                  "-profile:v high",
-                  "-vcodec libx264",
-                  `-crf ${qualities[quality]}`,
-                  "-coder 1",
-                  "-pix_fmt yuv420p",
-                  "-movflags +faststart",
-                  "-g 30",
-                  "-bf 2",
-                  "-c:a aac",
-                  "-b:a 384k",
-                  "-b:v 1000k",
-                  `-r ${framerate}`,
-                  `-s ${width}x${height}`,
-                  "-vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
-                ])
-                .output(outputPath)
-                .on("end", () => {
-                  console.log("Complete! Click to open the video ");
-                  initVariables();
-                  showNotification("Complete! Click to open the video");
-                })
-                .on("error", (err) => {
-                  console.log(`An error occurred: ${err.message}`);
-                  showNotification(`An error occurred: ${err.message}`);
-                  initVariables();
-                })
-                .run();
-            }
-          }
-          //! issue with cancel ( the tem folder should be deleted and recording should be stopped)
-          // Close the dialog window
-          dialogWindow?.close();
-          dialogWindow = null;
-        })
-        .catch((err) => {
-          initVariables();
-          cleanupSync();
-          showNotification(`Error occured during process`);
-          console.log(err);
-          // Close the dialog window
-          dialogWindow?.close();
-          dialogWindow = null;
+  let filePath = app.lapse.settings.savePath;
+  if (filePath) {
+    let outputPath = `${filePath}/lapse-${Date.now()}.${
+      app.lapse.settings.format
+    }`;
+    let startTime = Date.now();
+    console.log("Start Time Create Timelape " + startTime);
+    const command = ffmpeg();
+    const { framerate, quality } = app.lapse.settings;
+    const qualities: any = {
+      auto: 25,
+      "8k": 6,
+      "4k": 12,
+      "1080p": 18,
+      "720p": 24,
+      "480p": 32,
+      "360p": 38,
+      "270p": 42,
+      "144p": 48,
+    };
+    command
+      .input(ffmpegImgPattern)
+      .inputOptions(["-y", `-r ${framerate}`, "-f image2", "-start_number 0"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset slow",
+        "-profile:v high",
+        "-vcodec libx264",
+        `-crf ${qualities[quality]}`,
+        "-coder 1",
+        "-pix_fmt yuv420p",
+        "-movflags +faststart",
+        "-g 30",
+        "-bf 2",
+        "-c:a aac",
+        "-b:a 384k",
+        "-b:v 1000k",
+        `-r ${framerate}`,
+        `-s ${width}x${height}`,
+        "-vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+      ])
+      .output(outputPath)
+      .on("end", () => {
+        console.log("Complete! Click to open the video ");
+        initVariables();
+        showNotification("Complete! Click to open the video", () => {
+          shell.openPath(outputPath);
         });
-
-    // Handle the dialog window being closed
-    dialogWindow?.on("closed", () => {
-      dialogWindow = null;
-    });
-  });
+      })
+      .on("error", (err) => {
+        console.log(`An error occurred: ${err.message}`);
+        showNotification(`An error occurred: ${err.message}`);
+        initVariables();
+      })
+      .run();
+  }
+  return;
 };
 
-export const processRecording = () => { };
+export const processRecording = () => {};
 
 export const resumeRecording = () => {
   recordState = RECORDING;
@@ -222,36 +168,66 @@ export const pauseRecording = () => {
 };
 
 export const startRecording = async () => {
-  // ? We resolve this promise if recording started or we tell user if it fails 
+  // ? We resolve this promise if recording started or we tell user if it fails
   sourceId = await selectSource();
   frameCount = 0;
-
-  // ! add custom images save location
-  mkdir("lapse_images", (err: any, dirPath: any) => {
-    err = 'Cannot create a directory'
-    if (err) {
-      console.log("====================================");
-      console.log(err);
-      console.log("====================================");
-      throw err
-    }
-    ffmpegImgPattern = join(dirPath, "lapse%d.png");
-    imagesDir = dirPath;
-  });
-  // ? set recording state
-  recordState = RECORDING;
-  // ? Check if countdown is enabled
-  if (app.lapse.settings.countdown) {
-    // ? create a temp browser window to show timer and close it once
-    const dialogWindow = createTempWindow({
-      windowOptions: { show: true }
-    })
-    ipcMain.on("done-timer", () => {
-      dialogWindow?.close();
-      createScreenshotInterval(sourceId);
+  if (sourceId) {
+    // ! add custom images save location
+    mkdir("lapse_images", (err: any, dirPath: any) => {
+      if (err) {
+        console.log("====================================");
+        console.log(err);
+        console.log("====================================");
+        throw err;
+      }
+      ffmpegImgPattern = join(dirPath, "lapse%d.png");
+      imagesDir = dirPath;
     });
-  } else {
-    createScreenshotInterval(sourceId);
+    // ? set recording state
+    recordState = RECORDING;
+    // ? Check if countdown is enabled
+    if (app.lapse.settings.countdown) {
+      // ? create a temp browser window to show timer and close it once
+      // create a temp browser window to show timer and close it once
+      const screenBounds = screen.getDisplayNearestPoint(
+        screen.getCursorScreenPoint()
+      ).bounds;
+      let dialogWindow: BrowserWindow | null = new BrowserWindow({
+        height: screenBounds.height,
+        width: screenBounds.width,
+        // show: false, // Create the window initially hidden
+        alwaysOnTop: true,
+        transparent: true,
+        frame: false,
+        webPreferences: {
+          // devTools: true,
+          nodeIntegration: true,
+          allowRunningInsecureContent: true,
+          preload: join(__dirname, "../preload.js"),
+        },
+      });
+      // Load a blank HTML page
+      const url = is.development
+        ? "http://localhost:8000/timer"
+        : format({
+            pathname: join(__dirname, "../../renderer/out/timer.html"),
+            protocol: "file:",
+            slashes: true,
+          });
+      dialogWindow.loadURL(url);
+      dialogWindow.webContents.on("did-finish-load", () => {});
+      dialogWindow.setIgnoreMouseEvents(true);
+      // Handle the dialog window being closed
+      dialogWindow.on("closed", () => {
+        dialogWindow = null;
+      });
+      ipcMain.on("done-timer", () => {
+        dialogWindow?.close();
+        createScreenshotInterval(sourceId);
+      });
+    } else {
+      createScreenshotInterval(sourceId);
+    }
   }
 };
 
@@ -269,7 +245,7 @@ async function selectSource() {
     thumbnailSize: screen.getPrimaryDisplay().bounds,
   });
 
-  // ! By default set the Entire screen as default 
+  // ! By default set the Entire screen as default
   selectedSourceId = sources[0].id;
 
   return new Promise(async (resolve, reject) => {
@@ -294,10 +270,10 @@ async function selectSource() {
       const url = is.development
         ? "http://localhost:8000/screens"
         : format({
-          pathname: join(__dirname, "../../renderer/out/screens.html"),
-          protocol: "file:",
-          slashes: true,
-        });
+            pathname: join(__dirname, "../../renderer/out/screens.html"),
+            protocol: "file:",
+            slashes: true,
+          });
 
       window.loadURL(url);
       is.development && window.webContents.openDevTools({ mode: "detach" });

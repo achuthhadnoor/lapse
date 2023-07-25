@@ -21,3 +21,7 @@ export const loadAppData = () => {
     store.set("lapse-settings", app.lapse.settings);
   }
 };
+
+export const updateStoreSettings = (settings: any) => {
+  store.set("lapse-settings", settings);
+};

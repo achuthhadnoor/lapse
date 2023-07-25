@@ -142,12 +142,12 @@ export default function Screens() {
             </div>
           </div>
           {/* <div className="flex flex-1"> */}
-          <div className="flex-1 py-5 max-h-screen overflow-auto grid grid-cols-2 px-5 gap-2 align-middle dark:text-neutral-400 text-neutral-800">
+          <div className="flex-1 py-5 max-h-screen overflow-auto grid grid-cols-3 px-5 gap-2 align-middle dark:text-neutral-400 text-neutral-800">
             {sources?.map((src) => (
-              <div className="relative px-2 pt-5 cursor-pointer" key={src.id}>
+              <div className="relative px-2 pt-5 cursor-pointer " key={src.id}>
                 <img
                   className={cl(
-                    "rounded-md gap-1 hover:ring-2 hover:ring-green-700 relative",
+                    " h-[100px]  rounded-md gap-1 hover:ring-2 hover:ring-green-700 relative",
                     source?.id === src.id && "ring-2 ring-green-700"
                   )}
                   src={src.thumbnail}
@@ -155,7 +155,9 @@ export default function Screens() {
                     selectSource(src);
                   }}
                 />
-                <div className="text-xs font-semibold pt-4">{src.name}</div>
+                <div className="text-xs font-semibold pt-4 overflow-ellipsis w-[150px] overflow-hidden">
+                  {src.name}
+                </div>
                 {/* <img
                 className="rounded hover:ring-2 hover:ring-green-700 m-5 relative h-10 w-10"
                 src={src.thumbnail}

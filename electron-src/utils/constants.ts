@@ -1,25 +1,27 @@
 import { app } from "electron";
 import { is } from "electron-util";
 
-export const USER_DEFAULT = is.development ? {
-  id: "0",
-  email: "hi@achuth.dev",
-  code: "DEVIL_MAY_CRY",
-  name: "Achuth Hadnoor",
-  isVerified: true,
-} : {
-  id: "",
-  email: "",
-  code: "",
-  name: "",
-  isVerified: false,
-};
+export const USER_DEFAULT = is.development
+  ? {
+      id: "0",
+      email: "hi@achuth.dev",
+      code: "DEVIL_MAY_CRY",
+      name: "Achuth Hadnoor",
+      isVerified: true,
+    }
+  : {
+      id: "",
+      email: "",
+      code: "",
+      name: "",
+      isVerified: false,
+    };
 
 export const IMAGE_TYPE_DEFAULT: "png" | "jpg" = "png";
 
 export const IMAGE_DIR_DEFAULT = "~/var/temp/lapse/";
 export const FORMAT_DEFAULT = "mp4";
-export const SAVE_PATH_DEFAULT = `${app.getPath("documents")}/lapse`;
+export const SAVE_PATH_DEFAULT = `${app.getPath("documents")}/`;
 export const SETTINGS_DEFAULT = {
   showTimer: true,
   intervals: 2, // 2,3,4,5
@@ -34,7 +36,7 @@ export const SETTINGS_DEFAULT = {
   savePath: SAVE_PATH_DEFAULT,
   height: "1080",
   width: "1920",
-  displayHideList: [] // ? Contains list of screens/apps to hide while starting to record ; {name,id,imageAsdataURI,byDev}
+  displayHideList: [], // ? Contains list of screens/apps to hide while starting to record ; {name,id,imageAsdataURI,byDev}
 };
 
 export const DEFAULT_STATE = {
