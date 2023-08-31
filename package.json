@@ -30,7 +30,7 @@
     "electron-store": "^8.1.0",
     "electron-util": "^0.17.2",
     "fluent-ffmpeg": "^2.1.2",
-    "mac-screen-capture-permissions": "1.1.0",
+    "mac-screen-capture-permissions": "^1.1.0",
     "mac-windows": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

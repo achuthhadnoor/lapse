@@ -59,7 +59,7 @@ const screenCaptureFallback = promptSystemPreferences({
 export const ensureScreenCapturePermissions = (
   fallback = screenCaptureFallback
 ) => {
-  const hadAsked = hasPromptedForPermission();
+  const hadAsked = hasPromptedForPermission(); // 1.false -> prompted | 2.true -> prompted
 
   const hasAccess = hasScreenCapturePermission();
 

@@ -1874,7 +1874,7 @@ lru-cache@^6.0.0:
   dependencies:
     yallist "^4.0.0"
 
-mac-screen-capture-permissions@1.1.0:
+mac-screen-capture-permissions@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/mac-screen-capture-permissions/-/mac-screen-capture-permissions-1.1.0.tgz#a60ac7f06240d5037b0e86d409723ec36d077c8c"
   integrity sha512-jMRumlB3FScui/7yW+5FqqbuO7CQ0XOJVT5oTsb7W9eRQDhCIpJpIF0XxLVXwq2DIOp0fYsz1LFiBjnyDYULyQ==

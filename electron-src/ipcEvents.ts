@@ -1,7 +1,14 @@
-import { app, ipcMain, net } from "electron";
+import { app, ipcMain, powerMonitor, net } from "electron";
 import { store } from "./utils/store";
-import { initializeTray } from "./utils/tray";
+import { initializeTray, setPausedTray, setRenderingTray } from "./utils/tray";
 import { windowManager } from "./windows/windowManager";
+import {
+  PAUSED,
+  RECORDING,
+  getRecordingState,
+  pauseRecording,
+  resumeRecording,
+} from "./utils/recorder";
 
 export const verifyUser = () => {
   const url = "https://getlapseapp.com/api/verify";
@@ -31,6 +38,19 @@ export const verifyUser = () => {
   request.write(params.toString());
   request.end();
 };
+const pauseRecordingNow = () => {
+  if (getRecordingState() === RECORDING) {
+    pauseRecording();
+    setPausedTray();
+  }
+};
+
+const resumeRecordingNow = () => {
+  if (getRecordingState() === PAUSED) {
+    resumeRecording();
+    setRenderingTray();
+  }
+};
 
 export default function init() {
   ipcMain.on("verified", (event, { id, email, code, name }) => {
@@ -52,4 +72,12 @@ export default function init() {
   ipcMain.on("quit-app", () => {
     app.quit();
   });
+
+  powerMonitor.on("lock-screen", pauseRecordingNow);
+  powerMonitor.on("shutdown", pauseRecordingNow);
+  powerMonitor.on("suspend", pauseRecordingNow);
+  powerMonitor.on("user-did-resign-active", pauseRecordingNow);
+  powerMonitor.on("resume", resumeRecordingNow);
+  powerMonitor.on("unlock-screen", resumeRecordingNow);
+  powerMonitor.on("user-did-become-active", resumeRecordingNow);
 }

@@ -29,11 +29,27 @@ import { updateStoreSettings } from "./store";
 
 let tray: Tray | null = null;
 
-// App icons to show record and stop
-export const appIcon = join(__dirname, "../../build/appTemplate.png");
-export const recordIcon = join(__dirname, "../../build/recordTemplate.png");
-export const loadingIcon = join(__dirname, "../../build/loadingTemplate.png");
-export const pauseIcon = join(__dirname, "../../build/pauseTemplate.png");
+/* 
+    ? App icons to show record and stop
+    ? In windows the icon should be colored or show the name of the app in the taskbar
+    ? or check if dark mode and light mode and change the icon programmatically
+  */
+export const appIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/appTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
+export const recordIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/recordTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
+export const loadingIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/loadingTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
+export const pauseIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/pauseTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
 
 export const setTrayTitle = (title: string) => {
   tray?.setTitle(title);
@@ -376,10 +392,7 @@ export const setRenderingTray = () => {
 };
 
 export const idelTrayMenu = () => {
-  tray?.setImage(
-    process.platform === "darwin" ? appIcon : nativeImage.createEmpty()
-  );
-  process.platform !== "darwin" && tray?.setTitle("lapse");
+  tray?.setImage(appIcon);
 
   tray?.setToolTip("Lapse | Start recording");
   tray?.setTitle("");
@@ -388,14 +401,7 @@ export const idelTrayMenu = () => {
 
 export const initializeTray = () => {
   // ? Create a tray in the menubar
-  tray = new Tray(
-    process.platform === "darwin" ? appIcon : nativeImage.createEmpty()
-  );
-  /* 
-    ? In windows the icon should be colored or show the name of the app in the taskbar
-    ? or check if dark mode and light mode and change the icon programmatically
-  */
-  process.platform !== "darwin" && tray.setTitle("lapse");
+  tray = new Tray(appIcon);
   tray?.setToolTip("Lapse | Start recording");
 
   // ? Here is where all the content menu is prepared and shown to the user
