@@ -1,10 +1,5 @@
 import { shell, dialog, app, systemPreferences } from "electron";
-import { openSystemPreferences } from "electron-util";
-import {
-  hasPromptedForPermission,
-  hasScreenCapturePermission,
-  // hasPromptedForPermission,
-} from "mac-screen-capture-permissions";
+import { is, openSystemPreferences } from "electron-util";
 import { ensureDockIsShowing } from "./dock";
 
 let isDialogShowing = false;
@@ -59,16 +54,20 @@ const screenCaptureFallback = promptSystemPreferences({
 export const ensureScreenCapturePermissions = (
   fallback = screenCaptureFallback
 ) => {
-  const hadAsked = hasPromptedForPermission(); // 1.false -> prompted | 2.true -> prompted
+  if (is.macos) {
+    const hasAccess =
+      systemPreferences.getMediaAccessStatus("screen") === "granted"
+        ? true
+        : false;
 
-  const hasAccess = hasScreenCapturePermission();
-
-  if (hasAccess) {
+    if (hasAccess) {
+      return true;
+    }
+    fallback();
+    return false;
+  } else {
     return true;
   }
-
-  fallback({ hasAsked: !hadAsked });
-  return false;
 };
 const screenAccessFallback = promptSystemPreferences({
   message: "Lapse cannot record the screen.",

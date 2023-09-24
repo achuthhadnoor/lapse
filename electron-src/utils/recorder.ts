@@ -2,43 +2,48 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
-  // dialog,
+  dialog,
   ipcMain,
   screen,
   shell,
 } from "electron";
-import { path as _path } from "@ffmpeg-installer/ffmpeg";
 import { track, cleanupSync, mkdir } from "temp";
 import { join } from "path";
-import { autoLauncher } from "./lib";
-import { store } from "./store";
 import { platform } from "os";
 import { writeFileSync } from "fs";
 import { format } from "url";
+import { fixPathForAsarUnpack, is } from "electron-util";
+
 import ffmpeg from "fluent-ffmpeg";
 import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
-import { idelTrayMenu, setPausedTray, setRenderingTray } from "./tray";
+
+import { autoLauncher } from "./lib";
+import { store } from "./store";
+import {
+  setIdleTrayMenu,
+  setPausedTray,
+  setRenderingTray,
+  setTrayTitle,
+} from "./tray";
 import showNotification from "../notify";
-import { fixPathForAsarUnpack, is } from "electron-util";
+import { RECORDER_STATE } from "./constants";
+
 const { getWindows, activateWindow } = require("mac-windows");
 track();
 ffmpeg.setFfmpegPath(fixPathForAsarUnpack(ffmpegPath));
 
-export const IDLE = "ideal",
-  RECORDING = "recording",
-  PAUSED = "paused",
-  RENDERING = "rendering";
+let recorderSettings: any = {
+  frameCount: 0,
+  imagesDir: "",
+  ffmpegImgPattern: "",
+  interval: undefined,
+  recordState: RECORDER_STATE.idle,
+  sourceId: "0",
+  height: "1080",
+  width: "1920",
+};
 
-let frameCount = 0,
-  imagesDir = "",
-  ffmpegImgPattern = "",
-  interval: NodeJS.Timeout,
-  recordState = IDLE,
-  sourceId: any = "0",
-  height = "1080",
-  width = "1920";
-
-export const getRecordingState = () => recordState;
+export const getRecordingState = () => recorderSettings.recordState;
 
 export const UpdateSettings = (newSettings: any) => {
   if (newSettings.autolaunch) {
@@ -51,16 +56,19 @@ export const UpdateSettings = (newSettings: any) => {
 };
 
 export const initVariables = () => {
-  clearInterval(interval);
+  clearInterval(recorderSettings.interval);
   cleanupSync();
-  recordState = IDLE;
-  frameCount = 0;
-  sourceId = "0";
-  idelTrayMenu();
+  recorderSettings = {
+    ...recorderSettings,
+    recordState: RECORDER_STATE.idle,
+    frameCount: 0,
+    sourceId: "0",
+  };
+  setIdleTrayMenu();
 };
 
 const createScreenshotInterval = (sourceId: string) => {
-  interval = setInterval(async () => {
+  recorderSettings.interval = setInterval(async () => {
     const sources = await desktopCapturer.getSources({
       types: ["window", "screen"],
       thumbnailSize: screen.getPrimaryDisplay().bounds,
@@ -73,11 +81,14 @@ const createScreenshotInterval = (sourceId: string) => {
         source.thumbnail.toDataURL().split(",")[1],
         "base64"
       );
-      const filePath = join(imagesDir, `lapse${frameCount++}.png`);
+      const filePath = join(
+        recorderSettings.imagesDir,
+        `lapse${recorderSettings.frameCount++}.png`
+      );
       console.log(filePath);
       writeFileSync(filePath, imgBuffer);
     } else {
-      if (getRecordingState() === RECORDING) {
+      if (getRecordingState() === RECORDER_STATE.recording) {
         pauseRecording();
         setPausedTray();
         return;
@@ -92,64 +103,144 @@ const createScreenshotInterval = (sourceId: string) => {
   }, app.lapse.settings.intervals * 1000);
 };
 
+export const prepareVideo = (outputPath: any) => {
+  let startTime = Date.now();
+  console.log("Start Time Create Timelape " + startTime);
+  const command = ffmpeg();
+  const { framerate, quality } = app.lapse.settings;
+  const qualities: any = {
+    auto: 25,
+    "8k": 6,
+    "4k": 12,
+    "1080p": 18,
+    "720p": 24,
+    "480p": 32,
+    "360p": 38,
+    "270p": 42,
+    "144p": 48,
+  };
+  command
+    .input(recorderSettings.ffmpegImgPattern)
+    .inputOptions(["-y", `-r ${framerate}`, "-f image2", "-start_number 0"])
+    .outputOptions([
+      "-c:v libx264",
+      "-preset slow",
+      "-profile:v high",
+      "-vcodec libx264",
+      `-crf ${qualities[quality]}`,
+      "-coder 1",
+      "-pix_fmt yuv420p",
+      "-movflags +faststart",
+      "-g 30",
+      "-bf 2",
+      "-c:a aac",
+      "-b:a 384k",
+      "-b:v 1000k",
+      `-r ${framerate}`,
+      `-s ${recorderSettings.width}x${recorderSettings.height}`,
+      "-vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+    ])
+    .output(outputPath)
+    .on("end", () => {
+      console.log("Complete! Click to open the video ");
+      initVariables();
+      showNotification("Complete! Click to open the video", () => {
+        shell.openPath(outputPath);
+      });
+    })
+    .on("error", (err) => {
+      console.log(`An error occurred: ${err.message}`);
+      showNotification(`An error occurred: ${err.message}`);
+      initVariables();
+    })
+    .on("progress", (process) => {
+      console.log("====================================");
+      console.log(`=>>>>>>>>> ${process.percent.toFixed(2)}`);
+      console.log("====================================");
+      setTrayTitle(` ${process.percent.toFixed(2)}% `);
+    })
+    // .on("stderr", (progress) => {
+    //   const progressMatch = progress
+    //     .toString()
+    //     .match(/time=(\d+:\d+:\d+\.\d+)/);
+    //   if (progressMatch) {
+    //     const numberOfImages = recorderSettings.frameCount; // Replace with the actual number of images
+    //     const videoDurationInSeconds = numberOfImages / framerate;
+    //     const timeString = progressMatch[1];
+    //     const [hours, minutes, seconds] = timeString.split(":").map(parseFloat);
+    //     const totalTimeInSeconds = hours * 3600 + minutes * 60 + seconds;
+    //     const progressPercentage =
+    //       (totalTimeInSeconds / videoDurationInSeconds) * 100;
+    //     console.log(`Progress: ${progressPercentage.toFixed(2)}%`);
+    //   }
+    // })
+    .on("close", (code) => {
+      if (code === 0) {
+        console.log("Video rendering completed successfully!");
+        // Do something when rendering is complete
+      } else {
+        console.error(`Video rendering failed with code ${code}`);
+        // Handle the error
+      }
+    })
+    .run();
+};
+
 export const stopRecording = async () => {
-  setRenderingTray();
-  recordState = RENDERING;
-  let filePath = app.lapse.settings.savePath;
-  if (filePath) {
-    let outputPath = `${filePath}/lapse-${Date.now()}.${
-      app.lapse.settings.format
-    }`;
-    let startTime = Date.now();
-    console.log("Start Time Create Timelape " + startTime);
-    const command = ffmpeg();
-    const { framerate, quality } = app.lapse.settings;
-    const qualities: any = {
-      auto: 25,
-      "8k": 6,
-      "4k": 12,
-      "1080p": 18,
-      "720p": 24,
-      "480p": 32,
-      "360p": 38,
-      "270p": 42,
-      "144p": 48,
-    };
-    command
-      .input(ffmpegImgPattern)
-      .inputOptions(["-y", `-r ${framerate}`, "-f image2", "-start_number 0"])
-      .outputOptions([
-        "-c:v libx264",
-        "-preset slow",
-        "-profile:v high",
-        "-vcodec libx264",
-        `-crf ${qualities[quality]}`,
-        "-coder 1",
-        "-pix_fmt yuv420p",
-        "-movflags +faststart",
-        "-g 30",
-        "-bf 2",
-        "-c:a aac",
-        "-b:a 384k",
-        "-b:v 1000k",
-        `-r ${framerate}`,
-        `-s ${width}x${height}`,
-        "-vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
-      ])
-      .output(outputPath)
-      .on("end", () => {
-        console.log("Complete! Click to open the video ");
-        initVariables();
-        showNotification("Complete! Click to open the video", () => {
-          shell.openPath(outputPath);
+  let filePath = null;
+  clearInterval(recorderSettings.interval);
+  if (app.lapse.settings.askSavePath) {
+    // open dialog here
+    const screenBounds = screen.getDisplayNearestPoint(
+      screen.getCursorScreenPoint()
+    ).bounds;
+    let dialogWindow: BrowserWindow | null = new BrowserWindow({
+      height: screenBounds.height,
+      width: screenBounds.width,
+      show: false, // Create the window initially hidden
+      alwaysOnTop: true,
+      transparent: true,
+      frame: false,
+    });
+    // Load a blank HTML page
+    const url = is.development
+      ? "http://localhost:8000/empty"
+      : format({
+          pathname: join(__dirname, "../../renderer/out/empty.html"),
+          protocol: "file:",
+          slashes: true,
         });
-      })
-      .on("error", (err) => {
-        console.log(`An error occurred: ${err.message}`);
-        showNotification(`An error occurred: ${err.message}`);
-        initVariables();
-      })
-      .run();
+    dialogWindow.loadURL(url);
+    // When the window is ready, show the dialog
+    dialogWindow.webContents.on("did-finish-load", async () => {
+      if (dialogWindow) {
+        dialogWindow.focus();
+        const result = await dialog.showSaveDialog(dialogWindow, {
+          title: "Save File",
+          defaultPath: `${app.lapse.settings.savePath}/lapse-${Date.now()}.${
+            app.lapse.settings.format
+          }`,
+        });
+        if (!result.canceled) {
+          recorderSettings.recordState = RECORDER_STATE.rendering;
+          setRenderingTray();
+          const path = result.filePath;
+          prepareVideo(path);
+        } else {
+          initVariables();
+        }
+        // Close the dialog window
+        dialogWindow?.close();
+        dialogWindow = null;
+      }
+    });
+  } else {
+    recorderSettings.recordState = RECORDER_STATE.rendering;
+    setRenderingTray();
+    filePath = app.lapse.settings.savePath;
+    prepareVideo(
+      `${filePath}/lapse-${Date.now()}.${app.lapse.settings.format}`
+    );
   }
   return;
 };
@@ -157,21 +248,21 @@ export const stopRecording = async () => {
 export const processRecording = () => {};
 
 export const resumeRecording = () => {
-  recordState = RECORDING;
-  createScreenshotInterval(sourceId);
+  recorderSettings.recordState = RECORDER_STATE.recording;
+  createScreenshotInterval(recorderSettings.sourceId);
 };
 
 export const pauseRecording = () => {
   // send a notification saying recording paused
-  recordState = PAUSED;
-  clearInterval(interval);
+  recorderSettings.recordState = RECORDER_STATE.paused;
+  clearInterval(recorderSettings.interval);
 };
 
 export const startRecording = async () => {
   // ? We resolve this promise if recording started or we tell user if it fails
-  sourceId = await selectSource();
-  frameCount = 0;
-  if (sourceId) {
+  recorderSettings.sourceId = await selectSource();
+  recorderSettings.frameCount = 0;
+  if (recorderSettings.sourceId) {
     // ! add custom images save location
     mkdir("lapse_images", (err: any, dirPath: any) => {
       if (err) {
@@ -180,11 +271,11 @@ export const startRecording = async () => {
         console.log("====================================");
         throw err;
       }
-      ffmpegImgPattern = join(dirPath, "lapse%d.png");
-      imagesDir = dirPath;
+      recorderSettings.ffmpegImgPattern = join(dirPath, "lapse%d.png");
+      recorderSettings.imagesDir = dirPath;
     });
     // ? set recording state
-    recordState = RECORDING;
+    recorderSettings.recordState = RECORDER_STATE.paused;
     // ? Check if countdown is enabled
     if (app.lapse.settings.countdown) {
       // ? create a temp browser window to show timer and close it once
@@ -223,10 +314,10 @@ export const startRecording = async () => {
       });
       ipcMain.on("done-timer", () => {
         dialogWindow?.close();
-        createScreenshotInterval(sourceId);
+        createScreenshotInterval(recorderSettings.sourceId);
       });
     } else {
-      createScreenshotInterval(sourceId);
+      createScreenshotInterval(recorderSettings.sourceId);
     }
   }
 };
@@ -250,7 +341,7 @@ async function selectSource() {
 
   return new Promise(async (resolve, reject) => {
     try {
-      let window = new BrowserWindow({
+      var window = new BrowserWindow({
         height: 600,
         width: 500,
         fullscreen: false,

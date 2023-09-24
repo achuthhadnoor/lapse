@@ -5,21 +5,20 @@ import prepareNext from "electron-next";
 import "./windows/load";
 import "./utils/recorder";
 import ipcEvents from "./ipcEvents";
-
 import { ensureScreenCapturePermissions } from "./utils/permission";
-
 import { initializeTray } from "./utils/tray";
-import { getRecordingState, RECORDING, stopRecording } from "./utils/recorder";
+import { getRecordingState, stopRecording } from "./utils/recorder";
 import { windowManager } from "./windows/windowManager";
 import { checkIfAppIsOpen, checkUpdates } from "./utils/lib";
 import { loadAppData } from "./utils/store";
+import { RECORDER_STATE } from "./utils/constants";
 
-// ? init IPC Events
-ipcEvents();
 // ? Check open state to avoid duplicate app launches
 checkIfAppIsOpen();
 // ? Load app data
 loadAppData();
+// ? init IPC Events
+ipcEvents();
 
 app.whenReady().then(async () => {
   // ? Disable CORS to send API request from the browserView
@@ -33,7 +32,13 @@ app.whenReady().then(async () => {
   // * Ensure the .app is moved to application folder as it will only be in read-only mode outside that
   !is.development && enforceMacOSAppLocation();
   // ? Load the nextJS app
-  await prepareNext("./renderer");
+  try {
+    await prepareNext("./renderer");
+  } catch (error) {
+    console.log("====================================");
+    console.log(error);
+    console.log("====================================");
+  }
   // ? check for updates
   // ? Check for permissions & user is verified to start using the app
   if (ensureScreenCapturePermissions()) {
@@ -64,7 +69,7 @@ app.whenReady().then(async () => {
   app.on("before-quit", async () => {
     // ! Pause and ask user to save recording or not
     // ? Prompt the user to save recording before quit
-    if (getRecordingState() === RECORDING) {
+    if (getRecordingState() === RECORDER_STATE.recording) {
       await stopRecording();
     }
   });

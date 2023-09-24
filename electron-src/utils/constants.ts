@@ -37,10 +37,25 @@ export const SETTINGS_DEFAULT = {
   height: "1080",
   width: "1920",
   displayHideList: [], // ? Contains list of screens/apps to hide while starting to record ; {name,id,imageAsdataURI,byDev}
+  askSavePath: false,
 };
-
+export const INTERVALS = [2, 3, 4, 5];
+export const RECORDER_STATE = {
+  idle: "IDLE",
+  recording: "RECORDING",
+  paused: "PAUSED",
+  rendering: "RENDERING",
+};
 export const DEFAULT_STATE = {
   timerText: "00:00:00",
   user: USER_DEFAULT,
   settings: SETTINGS_DEFAULT,
+};
+
+export const trimString = (inputString: string) => {
+  if (inputString.length > 50) {
+    const trimmedString = "...." + inputString.slice(-46); // Trim the first (length - 4) characters
+    return trimmedString;
+  }
+  return inputString;
 };

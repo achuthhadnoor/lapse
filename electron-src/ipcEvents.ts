@@ -1,14 +1,13 @@
 import { app, ipcMain, powerMonitor, net } from "electron";
 import { store } from "./utils/store";
-import { initializeTray, setPausedTray, setRenderingTray } from "./utils/tray";
+import { initializeTray, setPausedTray, setRecordingTray } from "./utils/tray";
 import { windowManager } from "./windows/windowManager";
 import {
-  PAUSED,
-  RECORDING,
   getRecordingState,
   pauseRecording,
   resumeRecording,
 } from "./utils/recorder";
+import { RECORDER_STATE } from "./utils/constants";
 
 export const verifyUser = () => {
   const url = "https://getlapseapp.com/api/verify";
@@ -39,16 +38,16 @@ export const verifyUser = () => {
   request.end();
 };
 const pauseRecordingNow = () => {
-  if (getRecordingState() === RECORDING) {
+  if (getRecordingState() === RECORDER_STATE.recording) {
     pauseRecording();
     setPausedTray();
   }
 };
 
 const resumeRecordingNow = () => {
-  if (getRecordingState() === PAUSED) {
+  if (getRecordingState() === RECORDER_STATE.paused) {
     resumeRecording();
-    setRenderingTray();
+    setRecordingTray();
   }
 };
 
@@ -73,11 +72,40 @@ export default function init() {
     app.quit();
   });
 
-  powerMonitor.on("lock-screen", pauseRecordingNow);
-  powerMonitor.on("shutdown", pauseRecordingNow);
-  powerMonitor.on("suspend", pauseRecordingNow);
-  powerMonitor.on("user-did-resign-active", pauseRecordingNow);
-  powerMonitor.on("resume", resumeRecordingNow);
-  powerMonitor.on("unlock-screen", resumeRecordingNow);
-  powerMonitor.on("user-did-become-active", resumeRecordingNow);
+  powerMonitor.on("lock-screen", () => {
+    console.log("lock-screen");
+
+    pauseRecordingNow;
+  });
+  powerMonitor.on("shutdown", () => {
+    console.log("shutdown");
+
+    pauseRecordingNow();
+  });
+  powerMonitor.on("suspend", () => {
+    console.log("suspend");
+
+    pauseRecordingNow();
+  });
+  powerMonitor.on("user-did-resign-active", () => {
+    console.log("user-did-resign-active");
+
+    pauseRecordingNow();
+  });
+
+  powerMonitor.on("resume", () => {
+    console.log("resume");
+
+    resumeRecordingNow();
+  });
+  powerMonitor.on("unlock-screen", () => {
+    console.log("unlock-screen");
+
+    resumeRecordingNow();
+  });
+  powerMonitor.on("user-did-become-active", () => {
+    console.log("user-did-become-active");
+
+    resumeRecordingNow();
+  });
 }

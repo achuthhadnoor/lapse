@@ -13,19 +13,16 @@ import { join } from "path";
 import { autoLauncher, getGlobalShortCut } from "./lib";
 import {
   getRecordingState,
-  IDLE,
-  PAUSED,
   pauseRecording,
-  RECORDING,
-  RENDERING,
   resumeRecording,
   startRecording,
   stopRecording,
 } from "./recorder";
 import { sendUpdateRequest } from "./lib";
 import { is } from "electron-util";
-import { format } from "url";
+
 import { updateStoreSettings } from "./store";
+import { INTERVALS, RECORDER_STATE } from "./constants";
 
 let tray: Tray | null = null;
 
@@ -100,11 +97,19 @@ const updateSettings = (newsettings: any) => {
   updateStoreSettings(app.lapse.settings);
 };
 
-const getIdelContextMenu = () => {
-  const { autolaunch, intervals, savePath, countdown } = app.lapse.settings;
+const getIdleContextMenu = () => {
+  const {
+    autolaunch,
+    intervals,
+    savePath,
+    countdown,
+    askSavePath,
+    format,
+    quality,
+    framerate,
+  } = app.lapse.settings;
   const intervalSettings: () => MenuItemConstructorOptions[] = () => {
-    const options = [2, 3, 4, 5];
-    return options.map((option) => ({
+    return INTERVALS.map((option) => ({
       label: `${option}`,
       checked: option === intervals,
       type: "checkbox",
@@ -113,6 +118,13 @@ const getIdelContextMenu = () => {
       },
     }));
   };
+  function trimString(inputString: string) {
+    if (inputString.length > 30) {
+      const trimmedString = "...." + inputString.slice(-26); // Trim the first (length - 4) characters
+      return trimmedString;
+    }
+    return inputString;
+  }
   const template: MenuItemConstructorOptions[] = [
     {
       label: "Start recording",
@@ -139,7 +151,7 @@ const getIdelContextMenu = () => {
       enabled: false,
     },
     {
-      label: "Screenshot Intervals",
+      label: `Screenshot Intervals (${intervals})`,
       submenu: intervalSettings(),
     },
     {
@@ -150,14 +162,6 @@ const getIdelContextMenu = () => {
         updateSettings({ countdown: !countdown });
       },
     },
-    // {
-    //   label: "Show Timer",
-    //   type: "checkbox",
-    //   checked: showTimer,
-    //   click: () => {
-    //     updateSettings({ showTimer: !showTimer });
-    //   },
-    // },
     {
       type: "separator",
     },
@@ -166,15 +170,15 @@ const getIdelContextMenu = () => {
       enabled: false,
     },
     {
-      label: "Format",
+      label: `Format (${format})`,
       submenu: prepareFormatMenu(),
     },
     {
-      label: "Quality",
+      label: `Quality (${quality})`,
       submenu: prepareQualityMenu(),
     },
     {
-      label: "Framerate",
+      label: `Framerate (${framerate})`,
       submenu: prepareFramerateMenu(),
     },
     {
@@ -185,11 +189,16 @@ const getIdelContextMenu = () => {
       enabled: false,
     },
     {
-      label: savePath,
+      label: "Ask before saving",
+      checked: askSavePath,
+      type: "checkbox",
       click: () => {
-        console.log("====================================");
-        console.log("savePath", savePath);
-        console.log("====================================");
+        updateSettings({ askSavePath: !askSavePath });
+      },
+    },
+    {
+      label: trimString(savePath),
+      click: () => {
         const screenBounds = screen.getDisplayNearestPoint(
           screen.getCursorScreenPoint()
         ).bounds;
@@ -386,17 +395,21 @@ export const setPausedTray = () => {
   tray?.popUpContextMenu(getPausedContextmenu());
 };
 
+export const setRecordingTray = () => {
+  tray?.setImage(recordIcon);
+  tray?.setToolTip("Recording..");
+};
+
 export const setRenderingTray = () => {
   tray?.setImage(loadingIcon);
   tray?.setToolTip("Preparing...");
 };
 
-export const idelTrayMenu = () => {
+export const setIdleTrayMenu = () => {
   tray?.setImage(appIcon);
-
   tray?.setToolTip("Lapse | Start recording");
   tray?.setTitle("");
-  tray?.popUpContextMenu(getIdelContextMenu());
+  tray?.popUpContextMenu(getIdleContextMenu());
 };
 
 export const initializeTray = () => {
@@ -406,24 +419,24 @@ export const initializeTray = () => {
 
   // ? Here is where all the content menu is prepared and shown to the user
   tray?.on("click", () => {
-    // ?  Based on the state of the Recording show the contextMenus ( Idel, recording, paused )
+    // ?  Based on the state of the Recording show the contextMenus ( Idle, recording, paused )
     switch (getRecordingState()) {
-      case IDLE:
-        idelTrayMenu();
+      case RECORDER_STATE.idle:
+        setIdleTrayMenu();
         break;
-      case RECORDING:
+      case RECORDER_STATE.recording:
         // ? change icon to paused and also display paused state context menu
         pauseRecording();
         setPausedTray();
         break;
-      case PAUSED:
+      case RECORDER_STATE.paused:
         setPausedTray();
         break;
-      case RENDERING:
+      case RECORDER_STATE.rendering:
         // setRenderingTray();
         break;
       default:
-        tray?.popUpContextMenu(getIdelContextMenu());
+        tray?.popUpContextMenu(getIdleContextMenu());
         break;
     }
   });
