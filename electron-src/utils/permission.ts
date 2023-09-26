@@ -29,6 +29,7 @@ const promptSystemPreferences =
       });
       isDialogShowing = false;
       if (response === 0) {
+        console.log("==> preferences", "opening system settings..");
         await openSystemPreferences(
           options.systemPreference,
           options.systemPreferencesPath
@@ -55,6 +56,10 @@ export const ensureScreenCapturePermissions = (
   fallback = screenCaptureFallback
 ) => {
   if (is.macos) {
+    console.log(
+      "==> permissions",
+      systemPreferences.getMediaAccessStatus("screen")
+    );
     const hasAccess =
       systemPreferences.getMediaAccessStatus("screen") === "granted"
         ? true
@@ -64,8 +69,11 @@ export const ensureScreenCapturePermissions = (
       return true;
     }
     fallback();
+    console.log("==> OS", "macOs");
     return false;
   } else {
+    console.log("==> OS", "windows or linux");
+
     return true;
   }
 };

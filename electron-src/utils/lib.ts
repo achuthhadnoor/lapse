@@ -28,7 +28,7 @@ export const sendUpdateRequest = (click: boolean) => {
     ? "http://localhost:3000/api/updates"
     : "https://getlapseapp.com/api/updates";
   const request = net.request(url);
-
+  console.log("==> updates", "checking for updates");
   request.on("response", (response) => {
     let body = "";
     response.on("data", (chunk) => {
@@ -49,6 +49,7 @@ export const sendUpdateRequest = (click: boolean) => {
         if (response === 0) {
           console.log("====================================");
           console.log(
+            "==> updates",
             `https://getlapseapp.com/download?email=${app.lapse.user.email}&&code=${app.lapse.user.code}`
           );
           console.log("====================================");
@@ -58,6 +59,7 @@ export const sendUpdateRequest = (click: boolean) => {
         }
       } else {
         if (click) {
+          console.log("==> updates", "same version");
           await dialog.showMessageBox({
             type: "info",
             buttons: ["ok"],
@@ -70,7 +72,7 @@ export const sendUpdateRequest = (click: boolean) => {
   });
   request.on("error", (err) => {
     console.log("====================================");
-    console.log(err);
+    console.log("==> updates", err);
     console.log("====================================");
   });
   request.end();

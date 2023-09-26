@@ -23,6 +23,7 @@ import { is } from "electron-util";
 
 import { updateStoreSettings } from "./store";
 import { INTERVALS, RECORDER_STATE } from "./constants";
+import { format } from "url";
 
 let tray: Tray | null = null;
 
@@ -104,7 +105,6 @@ const getIdleContextMenu = () => {
     savePath,
     countdown,
     askSavePath,
-    format,
     quality,
     framerate,
   } = app.lapse.settings;
@@ -135,12 +135,12 @@ const getIdleContextMenu = () => {
             // ? We change the icon and tooltip to let user know the selected screen is recording.
             tray?.setImage(recordIcon);
             tray?.setToolTip("Recording...");
-            console.log(`Recording: Started`);
+            console.log("==> Recording", `Recording: Started`);
           })
           .catch((error) => {
             // ! Global fallback when recording is interrupted
             console.log("====================================");
-            console.log("caught", error);
+            console.log("==> Recording", error);
             console.log("====================================");
           });
       },
@@ -170,7 +170,7 @@ const getIdleContextMenu = () => {
       enabled: false,
     },
     {
-      label: `Format (${format})`,
+      label: `Format (${app.lapse.settings.format})`,
       submenu: prepareFormatMenu(),
     },
     {
@@ -413,31 +413,35 @@ export const setIdleTrayMenu = () => {
 };
 
 export const initializeTray = () => {
-  // ? Create a tray in the menubar
-  tray = new Tray(appIcon);
-  tray?.setToolTip("Lapse | Start recording");
-
-  // ? Here is where all the content menu is prepared and shown to the user
-  tray?.on("click", () => {
-    // ?  Based on the state of the Recording show the contextMenus ( Idle, recording, paused )
-    switch (getRecordingState()) {
-      case RECORDER_STATE.idle:
-        setIdleTrayMenu();
-        break;
-      case RECORDER_STATE.recording:
-        // ? change icon to paused and also display paused state context menu
-        pauseRecording();
-        setPausedTray();
-        break;
-      case RECORDER_STATE.paused:
-        setPausedTray();
-        break;
-      case RECORDER_STATE.rendering:
-        // setRenderingTray();
-        break;
-      default:
-        tray?.popUpContextMenu(getIdleContextMenu());
-        break;
-    }
-  });
+  try {
+    // ? Create a tray in the menubar
+    tray = new Tray(appIcon);
+    tray?.setToolTip("Lapse | Start recording");
+    // ? Here is where all the content menu is prepared and shown to the user
+    tray?.on("click", () => {
+      // ?  Based on the state of the Recording show the contextMenus ( Idle, recording, paused )
+      switch (getRecordingState()) {
+        case RECORDER_STATE.idle:
+          setIdleTrayMenu();
+          break;
+        case RECORDER_STATE.recording:
+          // ? change icon to paused and also display paused state context menu
+          pauseRecording();
+          setPausedTray();
+          break;
+        case RECORDER_STATE.paused:
+          setPausedTray();
+          break;
+        case RECORDER_STATE.rendering:
+          // setRenderingTray();
+          break;
+        default:
+          tray?.popUpContextMenu(getIdleContextMenu());
+          break;
+      }
+    });
+    console.log("==> Tray", "tray initialized");
+  } catch (error) {
+    console.log("==> Tray", error);
+  }
 };

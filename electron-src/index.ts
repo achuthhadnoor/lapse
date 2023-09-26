@@ -9,7 +9,7 @@ import { ensureScreenCapturePermissions } from "./utils/permission";
 import { initializeTray } from "./utils/tray";
 import { getRecordingState, stopRecording } from "./utils/recorder";
 import { windowManager } from "./windows/windowManager";
-import { checkIfAppIsOpen, checkUpdates } from "./utils/lib";
+import { autoLauncher, checkIfAppIsOpen, checkUpdates } from "./utils/lib";
 import { loadAppData } from "./utils/store";
 import { RECORDER_STATE } from "./utils/constants";
 
@@ -34,9 +34,10 @@ app.whenReady().then(async () => {
   // ? Load the nextJS app
   try {
     await prepareNext("./renderer");
+    console.log("==> renderer", "loaded renderer");
   } catch (error) {
     console.log("====================================");
-    console.log(error);
+    console.log("==> renderer", error);
     console.log("====================================");
   }
   // ? check for updates
@@ -55,9 +56,13 @@ app.whenReady().then(async () => {
       shell.beep();
     } else {
       // ? License verification
+      console.log("==> ipcEvents", "license window opening...");
       windowManager.license?.open();
     }
-    !is.development && checkUpdates();
+    if (!is.development) {
+      checkUpdates();
+      app.lapse.settings.autolaunch && autoLauncher.enable();
+    }
   }
   // ? The app does not quit on closing all windows on MacOs
   app.on("window-all-closed", () => {

@@ -20,6 +20,11 @@ export const loadAppData = () => {
   } else {
     store.set("lapse-settings", app.lapse.settings);
   }
+  console.log(
+    "loadAppData",
+    JSON.stringify(app.lapse.user),
+    JSON.stringify(app.lapse.settings)
+  );
 };
 
 export const updateStoreSettings = (settings: any) => {

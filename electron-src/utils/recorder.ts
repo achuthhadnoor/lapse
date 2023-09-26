@@ -31,8 +31,7 @@ import { RECORDER_STATE } from "./constants";
 const { getWindows, activateWindow } = require("mac-windows");
 track();
 ffmpeg.setFfmpegPath(fixPathForAsarUnpack(ffmpegPath));
-
-let recorderSettings: any = {
+const defaultSettings: any = {
   frameCount: 0,
   imagesDir: "",
   ffmpegImgPattern: "",
@@ -42,6 +41,8 @@ let recorderSettings: any = {
   height: "1080",
   width: "1920",
 };
+
+let recorderSettings: any = defaultSettings;
 
 export const getRecordingState = () => recorderSettings.recordState;
 
@@ -63,6 +64,7 @@ export const initVariables = () => {
     recordState: RECORDER_STATE.idle,
     frameCount: 0,
     sourceId: "0",
+    interval: undefined,
   };
   setIdleTrayMenu();
 };
@@ -88,17 +90,16 @@ const createScreenshotInterval = (sourceId: string) => {
       console.log(filePath);
       writeFileSync(filePath, imgBuffer);
     } else {
-      if (getRecordingState() === RECORDER_STATE.recording) {
+      if (getRecordingState() === RECORDER_STATE.paused) {
         pauseRecording();
         setPausedTray();
         return;
+      } else {
+        // ! TODO: if the recording state is in recording then save the video or path so user can get the output.
+        initVariables();
+        console.log(source, "Error while processing! The recording.");
+        // stopRecording();
       }
-      initVariables();
-      console.log(
-        source,
-        "Error while processing! The recording will be saved to device."
-      );
-      // stopRecording();
     }
   }, app.lapse.settings.intervals * 1000);
 };
@@ -151,29 +152,33 @@ export const prepareVideo = (outputPath: any) => {
     .on("error", (err) => {
       console.log(`An error occurred: ${err.message}`);
       showNotification(`An error occurred: ${err.message}`);
+      // ! TODO: save the path to make a video later
       initVariables();
     })
     .on("progress", (process) => {
       console.log("====================================");
-      console.log(`=>>>>>>>>> ${process.percent.toFixed(2)}`);
+      console.log(`progress  =>>>>>>>>> ${process?.percent?.toFixed(2)}`);
       console.log("====================================");
-      setTrayTitle(` ${process.percent.toFixed(2)}% `);
+      if (process) {
+        process?.percent && setTrayTitle(` ${process?.percent?.toFixed(2)}% `);
+      }
     })
-    // .on("stderr", (progress) => {
-    //   const progressMatch = progress
-    //     .toString()
-    //     .match(/time=(\d+:\d+:\d+\.\d+)/);
-    //   if (progressMatch) {
-    //     const numberOfImages = recorderSettings.frameCount; // Replace with the actual number of images
-    //     const videoDurationInSeconds = numberOfImages / framerate;
-    //     const timeString = progressMatch[1];
-    //     const [hours, minutes, seconds] = timeString.split(":").map(parseFloat);
-    //     const totalTimeInSeconds = hours * 3600 + minutes * 60 + seconds;
-    //     const progressPercentage =
-    //       (totalTimeInSeconds / videoDurationInSeconds) * 100;
-    //     console.log(`Progress: ${progressPercentage.toFixed(2)}%`);
-    //   }
-    // })
+    .on("stderr", (progress) => {
+      const progressMatch = progress
+        .toString()
+        .match(/time=(\d+:\d+:\d+\.\d+)/);
+      if (progressMatch) {
+        const numberOfImages = recorderSettings.frameCount;
+        const videoDurationInSeconds = numberOfImages / framerate;
+        const timeString = progressMatch[1];
+        const [hours, minutes, seconds] = timeString.split(":").map(parseFloat);
+        const totalTimeInSeconds = hours * 3600 + minutes * 60 + seconds;
+        const progressPercentage =
+          (totalTimeInSeconds / videoDurationInSeconds) * 100;
+        console.log(`Progress: ${progressPercentage.toFixed(2)}%`);
+        progressPercentage && setTrayTitle(`${progressPercentage.toFixed(2)}%`);
+      }
+    })
     .on("close", (code) => {
       if (code === 0) {
         console.log("Video rendering completed successfully!");
@@ -189,6 +194,8 @@ export const prepareVideo = (outputPath: any) => {
 export const stopRecording = async () => {
   let filePath = null;
   clearInterval(recorderSettings.interval);
+  recorderSettings.recordState = RECORDER_STATE.rendering;
+  setRenderingTray();
   if (app.lapse.settings.askSavePath) {
     // open dialog here
     const screenBounds = screen.getDisplayNearestPoint(
@@ -222,8 +229,6 @@ export const stopRecording = async () => {
           }`,
         });
         if (!result.canceled) {
-          recorderSettings.recordState = RECORDER_STATE.rendering;
-          setRenderingTray();
           const path = result.filePath;
           prepareVideo(path);
         } else {
@@ -235,8 +240,6 @@ export const stopRecording = async () => {
       }
     });
   } else {
-    recorderSettings.recordState = RECORDER_STATE.rendering;
-    setRenderingTray();
     filePath = app.lapse.settings.savePath;
     prepareVideo(
       `${filePath}/lapse-${Date.now()}.${app.lapse.settings.format}`
@@ -258,77 +261,13 @@ export const pauseRecording = () => {
   clearInterval(recorderSettings.interval);
 };
 
-export const startRecording = async () => {
-  // ? We resolve this promise if recording started or we tell user if it fails
-  recorderSettings.sourceId = await selectSource();
-  recorderSettings.frameCount = 0;
-  if (recorderSettings.sourceId) {
-    // ! add custom images save location
-    mkdir("lapse_images", (err: any, dirPath: any) => {
-      if (err) {
-        console.log("====================================");
-        console.log(err);
-        console.log("====================================");
-        throw err;
-      }
-      recorderSettings.ffmpegImgPattern = join(dirPath, "lapse%d.png");
-      recorderSettings.imagesDir = dirPath;
-    });
-    // ? set recording state
-    recorderSettings.recordState = RECORDER_STATE.paused;
-    // ? Check if countdown is enabled
-    if (app.lapse.settings.countdown) {
-      // ? create a temp browser window to show timer and close it once
-      // create a temp browser window to show timer and close it once
-      const screenBounds = screen.getDisplayNearestPoint(
-        screen.getCursorScreenPoint()
-      ).bounds;
-      let dialogWindow: BrowserWindow | null = new BrowserWindow({
-        height: screenBounds.height,
-        width: screenBounds.width,
-        // show: false, // Create the window initially hidden
-        alwaysOnTop: true,
-        transparent: true,
-        frame: false,
-        webPreferences: {
-          // devTools: true,
-          nodeIntegration: true,
-          allowRunningInsecureContent: true,
-          preload: join(__dirname, "../preload.js"),
-        },
-      });
-      // Load a blank HTML page
-      const url = is.development
-        ? "http://localhost:8000/timer"
-        : format({
-            pathname: join(__dirname, "../../renderer/out/timer.html"),
-            protocol: "file:",
-            slashes: true,
-          });
-      dialogWindow.loadURL(url);
-      dialogWindow.webContents.on("did-finish-load", () => {});
-      dialogWindow.setIgnoreMouseEvents(true);
-      // Handle the dialog window being closed
-      dialogWindow.on("closed", () => {
-        dialogWindow = null;
-      });
-      ipcMain.on("done-timer", () => {
-        dialogWindow?.close();
-        createScreenshotInterval(recorderSettings.sourceId);
-      });
-    } else {
-      createScreenshotInterval(recorderSettings.sourceId);
-    }
-  }
-};
-
 async function selectSource() {
   /*
    ? This function pops up a window to select the screen/ app to record.
    ! give an option for user to select the screens that can be added to hide list in this from next time
   */
-  let selectedSourceId: string = "0";
-  let closeWindowMessage = false;
+  var selectedSourceId: string = "0";
+  var closeWindowMessage = false;
 
   // ? gets all the available sources and their metadata
   const sources = await desktopCapturer.getSources({
@@ -368,15 +307,18 @@ async function selectSource() {
 
       window.loadURL(url);
       is.development && window.webContents.openDevTools({ mode: "detach" });
-
-      ipcMain.once("selected-screen", (_e, args) => {
+      const selectScreen = (_e: any, args: any) => {
         activateWindow(args.ownerName);
         selectedSourceId = args.id;
         window.close();
-      });
-      ipcMain.once("close-screen", (_e, _args) => {
+      };
+      const closeScreen = (_e: any, _args: any) => {
         window.close();
         closeWindowMessage = true;
+      };
+      window.webContents.on("did-finish-load", () => {
+        ipcMain.once("selected-screen", selectScreen);
+        ipcMain.once("close-screen", closeScreen);
       });
       window.on("closed", () => {
         if (closeWindowMessage) {
@@ -392,10 +334,77 @@ async function selectSource() {
   });
 }
 
+export const startRecording = async () => {
+  // ? We resolve this promise if recording started or we tell user if it fails
+  recorderSettings.sourceId = await selectSource();
+  recorderSettings.frameCount = 0;
+  if (recorderSettings.sourceId) {
+    // ! add custom images save location
+    mkdir("lapse_images", (err: any, dirPath: any) => {
+      if (err) {
+        console.log("====================================");
+        console.log("==> Image dir", err);
+        console.log("====================================");
+        throw err;
+      }
+      recorderSettings.ffmpegImgPattern = join(dirPath, "lapse%d.png");
+      recorderSettings.imagesDir = dirPath;
+      console.log("==> Image dir", dirPath);
+    });
+    // ? set recording state
+    recorderSettings.recordState = RECORDER_STATE.recording;
+    // ? Check if countdown is enabled
+    if (app.lapse.settings.countdown) {
+      // ? create a temp browser window to show timer and close it once
+      // create a temp browser window to show timer and close it once
+      const screenBounds = screen.getDisplayNearestPoint(
+        screen.getCursorScreenPoint()
+      ).bounds;
+      let dialogWindow: BrowserWindow | null = new BrowserWindow({
+        height: screenBounds.height,
+        width: screenBounds.width,
+        // show: false, // Create the window initially hidden
+        alwaysOnTop: true,
+        transparent: true,
+        frame: false,
+        webPreferences: {
+          // devTools: true,
+          nodeIntegration: true,
+          allowRunningInsecureContent: true,
+          preload: join(__dirname, "../preload.js"),
+        },
+      });
+      // Load a blank HTML page
+      const url = is.development
+        ? "http://localhost:8000/timer"
+        : format({
+            pathname: join(__dirname, "../../renderer/out/timer.html"),
+            protocol: "file:",
+            slashes: true,
+          });
+      dialogWindow.loadURL(url);
+      dialogWindow.webContents.on("did-finish-load", () => {
+        ipcMain.on("done-timer", () => {
+          dialogWindow?.close();
+          createScreenshotInterval(recorderSettings.sourceId);
+        });
+      });
+      dialogWindow.setIgnoreMouseEvents(true);
+      // Handle the dialog window being closed
+      dialogWindow.on("closed", () => {
+        dialogWindow = null;
+      });
+    } else {
+      createScreenshotInterval(recorderSettings.sourceId);
+    }
+  }
+};
+
 ipcMain.handle("get-sources", async () => {
   const sources = await desktopCapturer.getSources({
     types: ["window", "screen"],
-    thumbnailSize: screen.getPrimaryDisplay().bounds,
+    thumbnailSize: screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+      .bounds,
   });
   const windows = await getWindows();
   const srcs = sources.map((src) => {

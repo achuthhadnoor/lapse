@@ -52,60 +52,64 @@ const resumeRecordingNow = () => {
 };
 
 export default function init() {
-  ipcMain.on("verified", (event, { id, email, code, name }) => {
-    event.returnValue = "Verified";
-    let user = {
-      id,
-      email,
-      code,
-      name,
-      isVerified: true,
-    };
-    app.lapse.user = user;
-    store.set("lapse-user", app.lapse.user);
-    windowManager.license?.close();
-    // createTray();
-    initializeTray();
-  });
+  try {
+    ipcMain.on("verified", (event, { id, email, code, name }) => {
+      event.returnValue = "Verified";
+      let user = {
+        id,
+        email,
+        code,
+        name,
+        isVerified: true,
+      };
+      app.lapse.user = user;
+      store.set("lapse-user", app.lapse.user);
+      windowManager.license?.close();
+      // createTray();
+      initializeTray();
+    });
 
-  ipcMain.on("quit-app", () => {
-    app.quit();
-  });
+    ipcMain.on("quit-app", () => {
+      app.quit();
+    });
 
-  powerMonitor.on("lock-screen", () => {
-    console.log("lock-screen");
+    powerMonitor.on("lock-screen", () => {
+      console.log("==> ipcEvents", "lock-screen");
 
-    pauseRecordingNow;
-  });
-  powerMonitor.on("shutdown", () => {
-    console.log("shutdown");
+      pauseRecordingNow;
+    });
+    powerMonitor.on("shutdown", () => {
+      console.log("==> ipcEvents", "shutdown");
 
-    pauseRecordingNow();
-  });
-  powerMonitor.on("suspend", () => {
-    console.log("suspend");
+      pauseRecordingNow();
+    });
+    powerMonitor.on("suspend", () => {
+      console.log("==> ipcEvents", "suspend");
 
-    pauseRecordingNow();
-  });
-  powerMonitor.on("user-did-resign-active", () => {
-    console.log("user-did-resign-active");
+      pauseRecordingNow();
+    });
+    powerMonitor.on("user-did-resign-active", () => {
+      console.log("==> ipcEvents", "user-did-resign-active");
 
-    pauseRecordingNow();
-  });
+      pauseRecordingNow();
+    });
 
-  powerMonitor.on("resume", () => {
-    console.log("resume");
+    powerMonitor.on("resume", () => {
+      console.log("==> ipcEvents", "resume");
 
-    resumeRecordingNow();
-  });
-  powerMonitor.on("unlock-screen", () => {
-    console.log("unlock-screen");
+      resumeRecordingNow();
+    });
+    powerMonitor.on("unlock-screen", () => {
+      console.log("==> ipcEvents", "unlock-screen");
 
-    resumeRecordingNow();
-  });
-  powerMonitor.on("user-did-become-active", () => {
-    console.log("user-did-become-active");
-
-    resumeRecordingNow();
-  });
+      resumeRecordingNow();
+    });
+    powerMonitor.on("user-did-become-active", () => {
+      console.log("==> ipcEvents", "user-did-become-active");
+      resumeRecordingNow();
+    });
+    console.log("==> ipcEvents", "registered ipc events ");
+  } catch (error) {
+    console.log("==> ipcEvents", error);
+  }
 }
