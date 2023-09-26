@@ -31,16 +31,20 @@ import { RECORDER_STATE } from "./constants";
 const { getWindows, activateWindow } = require("mac-windows");
 track();
 ffmpeg.setFfmpegPath(fixPathForAsarUnpack(ffmpegPath));
+
 const defaultSettings: any = {
   frameCount: 0,
   imagesDir: "",
   ffmpegImgPattern: "",
-  interval: undefined,
   recordState: RECORDER_STATE.idle,
   sourceId: "0",
   height: "1080",
   width: "1920",
 };
+let interval: any;
+let saveWindow: BrowserWindow | null = null;
+let TimerWindow: BrowserWindow | null = null;
+let sourcesWindow: BrowserWindow | null = null;
 
 let recorderSettings: any = defaultSettings;
 
@@ -57,7 +61,7 @@ export const UpdateSettings = (newSettings: any) => {
 };
 
 export const initVariables = () => {
-  clearInterval(recorderSettings.interval);
+  clearInterval(interval);
   cleanupSync();
   recorderSettings = {
     ...recorderSettings,
@@ -70,7 +74,7 @@ export const initVariables = () => {
 };
 
 const createScreenshotInterval = (sourceId: string) => {
-  recorderSettings.interval = setInterval(async () => {
+  interval = setInterval(async () => {
     const sources = await desktopCapturer.getSources({
       types: ["window", "screen"],
       thumbnailSize: screen.getPrimaryDisplay().bounds,
@@ -193,7 +197,7 @@ export const prepareVideo = (outputPath: any) => {
 
 export const stopRecording = async () => {
   let filePath = null;
-  clearInterval(recorderSettings.interval);
+  clearInterval(interval);
   recorderSettings.recordState = RECORDER_STATE.rendering;
   setRenderingTray();
   if (app.lapse.settings.askSavePath) {
@@ -201,7 +205,7 @@ export const stopRecording = async () => {
     const screenBounds = screen.getDisplayNearestPoint(
       screen.getCursorScreenPoint()
     ).bounds;
-    let dialogWindow: BrowserWindow | null = new BrowserWindow({
+    saveWindow = new BrowserWindow({
       height: screenBounds.height,
       width: screenBounds.width,
       show: false, // Create the window initially hidden
@@ -217,12 +221,12 @@ export const stopRecording = async () => {
           protocol: "file:",
           slashes: true,
         });
-    dialogWindow.loadURL(url);
+    saveWindow.loadURL(url);
     // When the window is ready, show the dialog
-    dialogWindow.webContents.on("did-finish-load", async () => {
-      if (dialogWindow) {
-        dialogWindow.focus();
-        const result = await dialog.showSaveDialog(dialogWindow, {
+    saveWindow.webContents.on("did-finish-load", async () => {
+      if (saveWindow) {
+        saveWindow.focus();
+        const result = await dialog.showSaveDialog(saveWindow, {
           title: "Save File",
           defaultPath: `${app.lapse.settings.savePath}/lapse-${Date.now()}.${
             app.lapse.settings.format
@@ -235,8 +239,8 @@ export const stopRecording = async () => {
           initVariables();
         }
         // Close the dialog window
-        dialogWindow?.close();
-        dialogWindow = null;
+        saveWindow?.close();
+        saveWindow = null;
       }
     });
   } else {
@@ -258,7 +262,8 @@ export const resumeRecording = () => {
 export const pauseRecording = () => {
   // send a notification saying recording paused
   recorderSettings.recordState = RECORDER_STATE.paused;
-  clearInterval(recorderSettings.interval);
+  console.log(interval);
+  clearInterval(interval);
 };
 
 async function selectSource() {
@@ -280,7 +285,7 @@ async function selectSource() {
 
   return new Promise(async (resolve, reject) => {
     try {
-      var window = new BrowserWindow({
+      sourcesWindow = new BrowserWindow({
         height: 600,
         width: 500,
         fullscreen: false,
@@ -305,22 +310,23 @@ async function selectSource() {
             slashes: true,
           });
 
-      window.loadURL(url);
-      is.development && window.webContents.openDevTools({ mode: "detach" });
+      sourcesWindow.loadURL(url);
+      is.development &&
+        sourcesWindow.webContents.openDevTools({ mode: "detach" });
       const selectScreen = (_e: any, args: any) => {
         activateWindow(args.ownerName);
         selectedSourceId = args.id;
-        window.close();
+        sourcesWindow?.close();
       };
       const closeScreen = (_e: any, _args: any) => {
-        window.close();
+        sourcesWindow?.close();
         closeWindowMessage = true;
       };
-      window.webContents.on("did-finish-load", () => {
+      sourcesWindow?.webContents.on("did-finish-load", () => {
         ipcMain.once("selected-screen", selectScreen);
         ipcMain.once("close-screen", closeScreen);
       });
-      window.on("closed", () => {
+      sourcesWindow?.on("closed", () => {
         if (closeWindowMessage) {
           closeWindowMessage = false;
         } else {
@@ -360,7 +366,7 @@ export const startRecording = async () => {
       const screenBounds = screen.getDisplayNearestPoint(
         screen.getCursorScreenPoint()
       ).bounds;
-      let dialogWindow: BrowserWindow | null = new BrowserWindow({
+      TimerWindow = new BrowserWindow({
         height: screenBounds.height,
         width: screenBounds.width,
         // show: false, // Create the window initially hidden
@@ -382,17 +388,17 @@ export const startRecording = async () => {
             protocol: "file:",
             slashes: true,
           });
-      dialogWindow.loadURL(url);
-      dialogWindow.webContents.on("did-finish-load", () => {
+      TimerWindow.loadURL(url);
+      TimerWindow.webContents.on("did-finish-load", () => {
         ipcMain.on("done-timer", () => {
-          dialogWindow?.close();
+          TimerWindow?.close();
           createScreenshotInterval(recorderSettings.sourceId);
         });
       });
-      dialogWindow.setIgnoreMouseEvents(true);
+      TimerWindow.setIgnoreMouseEvents(true);
       // Handle the dialog window being closed
-      dialogWindow.on("closed", () => {
-        dialogWindow = null;
+      TimerWindow.on("closed", () => {
+        TimerWindow = null;
       });
     } else {
       createScreenshotInterval(recorderSettings.sourceId);
