@@ -65,7 +65,6 @@ export default function init() {
       app.lapse.user = user;
       store.set("lapse-user", app.lapse.user);
       windowManager.license?.close();
-      // createTray();
       initializeTray();
     });
 

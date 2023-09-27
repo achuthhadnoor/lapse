@@ -27,11 +27,6 @@ import { format } from "url";
 
 let tray: Tray | null = null;
 
-/* 
-    ? App icons to show record and stop
-    ? In windows the icon should be colored or show the name of the app in the taskbar
-    ? or check if dark mode and light mode and change the icon programmatically
-  */
 export const appIcon =
   process.platform === "darwin"
     ? join(__dirname, "../../build/appTemplate.png")
@@ -53,49 +48,64 @@ export const setTrayTitle = (title: string) => {
   tray?.setTitle(title);
 };
 
-const prepareFormatMenu: () => MenuItemConstructorOptions[] = () => {
+const prepareFormatMenu = (): MenuItemConstructorOptions[] => {
   const options = ["mp4", "mkv", "avi", "webm"];
   return options.map((option) => ({
     label: option,
     type: "checkbox",
     checked: app.lapse.settings.format === option,
     click: () => {
-      updateSettings({ format: option });
+      try {
+        updateSettings({ format: option });
+      } catch (error) {
+        console.error("Error updating settings:", error);
+      }
     },
   }));
 };
 
-const prepareQualityMenu: () => MenuItemConstructorOptions[] = () => {
+const prepareQualityMenu = (): MenuItemConstructorOptions[] => {
   const options = ["auto", "4k", "1080p", "720p", "480p", "360p"];
   return options.map((option) => ({
     label: option,
     type: "checkbox",
     checked: app.lapse.settings.quality === option,
     click: () => {
-      updateSettings({ quality: option });
+      try {
+        updateSettings({ quality: option });
+      } catch (error) {
+        console.error("Error updating settings:", error);
+      }
     },
   }));
 };
 
-const prepareFramerateMenu: () => MenuItemConstructorOptions[] = () => {
+const prepareFramerateMenu = (): MenuItemConstructorOptions[] => {
   const options = [12, 24, 30, 60];
   return options.map((option) => ({
     label: `${option}`,
     checked: option === app.lapse.settings.framerate,
     type: "checkbox",
     click: () => {
-      updateSettings({ framerate: option });
+      try {
+        updateSettings({ framerate: option });
+      } catch (error) {
+        console.error("Error updating settings:", error);
+      }
     },
   }));
 };
 
-const updateSettings = (newsettings: any) => {
-  app.lapse.settings = {
-    ...app.lapse.settings,
-    ...newsettings,
-  };
-  //? update store here
-  updateStoreSettings(app.lapse.settings);
+const updateSettings = (newSettings: any) => {
+  try {
+    app.lapse.settings = {
+      ...app.lapse.settings,
+      ...newSettings,
+    };
+    updateStoreSettings(app.lapse.settings);
+  } catch (error) {
+    console.error("Error updating settings:", error);
+  }
 };
 
 const getIdleContextMenu = () => {
@@ -108,41 +118,43 @@ const getIdleContextMenu = () => {
     quality,
     framerate,
   } = app.lapse.settings;
-  const intervalSettings: () => MenuItemConstructorOptions[] = () => {
+
+  const intervalSettings = (): MenuItemConstructorOptions[] => {
     return INTERVALS.map((option) => ({
       label: `${option}`,
       checked: option === intervals,
       type: "checkbox",
       click: () => {
-        updateSettings({ intervals: option });
+        try {
+          updateSettings({ intervals: option });
+        } catch (error) {
+          console.error("Error updating settings:", error);
+        }
       },
     }));
   };
+
   function trimString(inputString: string) {
     if (inputString.length > 30) {
-      const trimmedString = "...." + inputString.slice(-26); // Trim the first (length - 4) characters
+      const trimmedString = "...." + inputString.slice(-26);
       return trimmedString;
     }
     return inputString;
   }
+
   const template: MenuItemConstructorOptions[] = [
     {
       label: "Start recording",
       accelerator: getGlobalShortCut(),
       click: () => {
-        startRecording()
-          .then(() => {
-            // ? We change the icon and tooltip to let user know the selected screen is recording.
-            tray?.setImage(recordIcon);
-            tray?.setToolTip("Recording...");
-            console.log("==> Recording", `Recording: Started`);
-          })
-          .catch((error) => {
-            // ! Global fallback when recording is interrupted
-            console.log("====================================");
-            console.log("==> Recording", error);
-            console.log("====================================");
-          });
+        try {
+          startRecording();
+          tray?.setImage(recordIcon);
+          tray?.setToolTip("Recording...");
+          console.log("==> Recording", `Recording: Started`);
+        } catch (error) {
+          console.error("Error starting recording:", error);
+        }
       },
     },
     { type: "separator" },
@@ -414,34 +426,34 @@ export const setIdleTrayMenu = () => {
 
 export const initializeTray = () => {
   try {
-    // ? Create a tray in the menubar
     tray = new Tray(appIcon);
     tray?.setToolTip("Lapse | Start recording");
-    // ? Here is where all the content menu is prepared and shown to the user
-    tray?.on("click", () => {
-      // ?  Based on the state of the Recording show the contextMenus ( Idle, recording, paused )
-      switch (getRecordingState()) {
-        case RECORDER_STATE.idle:
-          setIdleTrayMenu();
-          break;
-        case RECORDER_STATE.recording:
-          // ? change icon to paused and also display paused state context menu
-          pauseRecording();
-          setPausedTray();
-          break;
-        case RECORDER_STATE.paused:
-          setPausedTray();
-          break;
-        case RECORDER_STATE.rendering:
-          // setRenderingTray();
-          break;
-        default:
-          tray?.popUpContextMenu(getIdleContextMenu());
-          break;
+    tray?.on("click", async () => {
+      try {
+        switch (getRecordingState()) {
+          case RECORDER_STATE.idle:
+            setIdleTrayMenu();
+            break;
+          case RECORDER_STATE.recording:
+            pauseRecording();
+            setPausedTray();
+            break;
+          case RECORDER_STATE.paused:
+            setPausedTray();
+            break;
+          case RECORDER_STATE.rendering:
+            // setRenderingTray();
+            break;
+          default:
+            tray?.popUpContextMenu(getIdleContextMenu());
+            break;
+        }
+      } catch (error) {
+        console.error("Error handling tray click:", error);
       }
     });
     console.log("==> Tray", "tray initialized");
   } catch (error) {
-    console.log("==> Tray", error);
+    console.error("Error initializing tray:", error);
   }
 };

@@ -20027,7 +20027,6 @@ const IndexPage = () => {
         email: email,
       })
       .then((response) => {
-
         const uses = nestedValue(response, "data.uses");
 
         if (uses > limit) {
@@ -20059,7 +20058,7 @@ const IndexPage = () => {
           email,
           code,
           name: response.data.purchase.name,
-          isVerified:true,
+          isVerified: true,
         });
         // Store.set('verification', response.data)
         // Store.set('showMenubar', true)
@@ -20083,7 +20082,7 @@ const IndexPage = () => {
               email,
               code,
               name: email,
-              isVerified: true
+              isVerified: true,
             });
           } else {
             alert("Sorry. This license does not exist.");
@@ -20104,12 +20103,12 @@ const IndexPage = () => {
         "dark:text-neutral-50 text-neutral-800 relative p-5 dragable"
       )}
     >
-      <div className="">
+      <div>
         <svg
+          className="float-right no-drag"
           onClick={() => {
             window.electron.ipcRenderer.send("quit-app");
           }}
-          className="float-right"
           viewBox="0 0 24 24"
           width="24"
           height="24"
@@ -20124,7 +20123,7 @@ const IndexPage = () => {
         </svg>
       </div>
       <img src="./icon.png" className="h-20 w-20 mt-1 relative select-none" />
-      <h1 className="select-none  relative my-4 text-4xl">
+      <h1 className="select-none relative my-4 text-4xl">
         <svg
           width="105"
           height="35"

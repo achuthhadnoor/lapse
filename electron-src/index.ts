@@ -17,6 +17,8 @@ import { RECORDER_STATE } from "./utils/constants";
 checkIfAppIsOpen();
 // ? Load app data
 loadAppData();
+console.log("====> data", JSON.stringify(app.lapse));
+
 // ? init IPC Events
 ipcEvents();
 
@@ -43,26 +45,26 @@ app.whenReady().then(async () => {
   // ? check for updates
   // ? Check for permissions & user is verified to start using the app
   if (ensureScreenCapturePermissions()) {
-    if (
-      !app.getLoginItemSettings().wasOpenedAtLogin &&
-      app.lapse.user.isVerified
-    ) {
-      // ! We can add an onboarding logic of explaining how to use the app
-      //? hide the dock icon to shift the uSer focus to the menubar
-      if (app.dock) app.dock.hide();
-      // ? Initialize the tray menu
-      initializeTray();
-      // ? Give a beep sound saying the app is loaded and ready to use
-      shell.beep();
-    } else {
-      // ? License verification
-      console.log("==> ipcEvents", "license window opening...");
-      windowManager.license?.open();
-    }
-    if (!is.development) {
-      checkUpdates();
-      app.lapse.settings.autolaunch && autoLauncher.enable();
-    }
+    console.log("==> permissions : no permissions found");
+    return;
+  }
+  // !app.getLoginItemSettings().wasOpenedAtLogin &&
+  if (app.lapse.user.isVerified) {
+    // ! We can add an onboarding logic of explaining how to use the app
+    //? hide the dock icon to shift the uSer focus to the menubar
+    if (app.dock) app.dock.hide();
+    // ? Initialize the tray menu
+    initializeTray();
+    // ? Give a beep sound saying the app is loaded and ready to use
+    shell.beep();
+  } else {
+    // ? License verification
+    console.log("==> ipcEvents", "license window opening...");
+    windowManager.license?.open();
+  }
+  if (!is.development) {
+    checkUpdates();
+    app.lapse.settings.autolaunch && autoLauncher.enable();
   }
   // ? The app does not quit on closing all windows on MacOs
   app.on("window-all-closed", () => {
