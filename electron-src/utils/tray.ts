@@ -1,10 +1,12 @@
 import {
+  BrowserWindow,
   Menu,
   MenuItemConstructorOptions,
   Tray,
   app,
   dialog,
   shell,
+  screen,
 } from "electron";
 
 import { recorder } from "./recorder";
@@ -21,7 +23,9 @@ import {
   pauseIcon,
   loadingIcon,
 } from "./lib";
-import { windowManager } from "../windows/windowManager";
+
+import { format } from "url";
+import { join } from "path";
 
 export class TrayManager {
   menubar?: Tray;
@@ -222,7 +226,61 @@ export class TrayManager {
       {
         label: trimSavedPath(savePath),
         click: () => {
-          windowManager.save?.open();
+          const screenBounds = screen.getDisplayNearestPoint(
+            screen.getCursorScreenPoint()
+          ).bounds;
+          let dialogWindow: BrowserWindow | null = new BrowserWindow({
+            height: screenBounds.height,
+            width: screenBounds.width,
+            show: false, // Create the window initially hidden
+            alwaysOnTop: true,
+            transparent: true,
+            frame: false,
+          });
+          // Load a blank HTML page
+          const url = is.development
+            ? "http://localhost:8000/empty"
+            : format({
+                pathname: join(__dirname, "../../renderer/out/empty.html"),
+                protocol: "file:",
+                slashes: true,
+              });
+          dialogWindow?.loadURL(url);
+          // When the window is ready, show the dialog
+          dialogWindow?.webContents.on("did-finish-load", () => {
+            if (dialogWindow) {
+              dialogWindow.focus();
+            }
+            dialogWindow &&
+              dialog
+                .showOpenDialog(dialogWindow, {
+                  properties: ["openDirectory"],
+                  buttonLabel: "Choose Folder",
+                  defaultPath: savePath,
+                  // Add any additional options as needed
+                })
+                .then((result) => {
+                  if (!result.canceled) {
+                    const folderPath = result.filePaths[0];
+                    // Use the selected folder path here
+                    updateSettings({ savePath: folderPath });
+                  }
+                  // Close the dialog window
+                  dialogWindow?.close();
+                  dialogWindow = null;
+                })
+                .catch((err) => {
+                  console.log(err);
+                  // Close the dialog window
+                  dialogWindow?.close();
+                  dialogWindow = null;
+                });
+          });
+
+          // Handle the dialog window being closed
+          dialogWindow.on("closed", () => {
+            dialogWindow = null;
+          });
         },
       },
       {
