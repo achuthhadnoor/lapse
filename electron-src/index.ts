@@ -6,12 +6,12 @@ import "./windows/load";
 import "./utils/recorder";
 import ipcEvents from "./ipcEvents";
 import { ensureScreenCapturePermissions } from "./utils/permission";
-import { initializeTray } from "./utils/tray";
-import { getRecordingState, stopRecording } from "./utils/recorder";
 import { windowManager } from "./windows/windowManager";
 import { autoLauncher, checkIfAppIsOpen, checkUpdates } from "./utils/lib";
 import { loadAppData } from "./utils/store";
 import { RECORDER_STATE } from "./utils/constants";
+import { tray } from "./utils/tray";
+import { recorder } from "./utils/recorder";
 
 // ? Check open state to avoid duplicate app launches
 checkIfAppIsOpen();
@@ -44,7 +44,8 @@ app.whenReady().then(async () => {
   }
   // ? check for updates
   // ? Check for permissions & user is verified to start using the app
-  if (ensureScreenCapturePermissions()) {
+
+  if (!ensureScreenCapturePermissions()) {
     console.log("==> permissions : no permissions found");
     return;
   }
@@ -54,7 +55,7 @@ app.whenReady().then(async () => {
     //? hide the dock icon to shift the uSer focus to the menubar
     if (app.dock) app.dock.hide();
     // ? Initialize the tray menu
-    initializeTray();
+    tray.initializeTray();
     // ? Give a beep sound saying the app is loaded and ready to use
     shell.beep();
   } else {
@@ -76,8 +77,8 @@ app.whenReady().then(async () => {
   app.on("before-quit", async () => {
     // ! Pause and ask user to save recording or not
     // ? Prompt the user to save recording before quit
-    if (getRecordingState() === RECORDER_STATE.recording) {
-      await stopRecording();
+    if (recorder.getRecordingState() === RECORDER_STATE.recording) {
+      await recorder.stopRecording();
     }
   });
 });

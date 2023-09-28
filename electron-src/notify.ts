@@ -1,5 +1,5 @@
 import { Notification } from "electron";
-import { appIcon } from "./utils/tray";
+import { appIcon } from "./utils/lib";
 
 function showNotification(message: string, fn?: any) {
   const notification = {

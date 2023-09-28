@@ -1,13 +1,9 @@
 import { app, ipcMain, powerMonitor, net } from "electron";
 import { store } from "./utils/store";
-import { initializeTray, setPausedTray, setRecordingTray } from "./utils/tray";
 import { windowManager } from "./windows/windowManager";
-import {
-  getRecordingState,
-  pauseRecording,
-  resumeRecording,
-} from "./utils/recorder";
+import { recorder } from "./utils/recorder";
 import { RECORDER_STATE } from "./utils/constants";
+import { tray } from "./utils/tray";
 
 export const verifyUser = () => {
   const url = "https://getlapseapp.com/api/verify";
@@ -38,16 +34,16 @@ export const verifyUser = () => {
   request.end();
 };
 const pauseRecordingNow = () => {
-  if (getRecordingState() === RECORDER_STATE.recording) {
-    pauseRecording();
-    setPausedTray();
+  if (recorder.getRecordingState() === RECORDER_STATE.recording) {
+    recorder.pauseRecording();
+    tray.setPausedTrayMenu();
   }
 };
 
 const resumeRecordingNow = () => {
-  if (getRecordingState() === RECORDER_STATE.paused) {
-    resumeRecording();
-    setRecordingTray();
+  if (recorder.getRecordingState() === RECORDER_STATE.paused) {
+    recorder.resumeRecording();
+    tray.setRecordingTrayMenu();
   }
 };
 
@@ -65,7 +61,7 @@ export default function init() {
       app.lapse.user = user;
       store.set("lapse-user", app.lapse.user);
       windowManager.license?.close();
-      initializeTray();
+      tray.initializeTray();
     });
 
     ipcMain.on("quit-app", () => {

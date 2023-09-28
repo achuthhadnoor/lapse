@@ -3,7 +3,7 @@ import { is } from "electron-util";
 import { join } from "path";
 import { format } from "url";
 import AutoLaunch from "auto-launch";
-import { store } from "./store";
+import { store, updateStoreSettings } from "./store";
 
 export const autoLauncher = new AutoLaunch({
   name: "Lapse",
@@ -139,3 +139,40 @@ export const getGlobalShortCut = () => {
   // ! Here we need to handle global shortcuts
   return "meta+option+l";
 };
+
+export const updateSettings = (newSettings: any) => {
+  try {
+    app.lapse.settings = {
+      ...app.lapse.settings,
+      ...newSettings,
+    };
+    updateStoreSettings(app.lapse.settings);
+  } catch (error) {
+    console.error("Error updating settings:", error);
+  }
+};
+
+export const trimSavedPath = (inputString: string) => {
+  if (inputString.length > 30) {
+    const trimmedString = "...." + inputString.slice(-26);
+    return trimmedString;
+  }
+  return inputString;
+};
+
+export const appIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/appTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
+export const recordIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/recordTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
+export const loadingIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/loadingTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
+export const pauseIcon =
+  process.platform === "darwin"
+    ? join(__dirname, "../../build/pauseTemplate.png")
+    : join(__dirname, "../../build/lapse.ico");
