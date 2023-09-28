@@ -29,7 +29,7 @@ export interface screensWindowManager {
   isOpen: () => boolean;
 }
 export interface timerWindowManager {
-  open: (srcId: any) => void;
+  open: () => void;
   close: () => void;
   isOpen: () => boolean;
 }

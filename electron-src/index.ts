@@ -64,8 +64,8 @@ app.whenReady().then(async () => {
     windowManager.license?.open();
   }
   if (!is.development) {
-    checkUpdates();
     app.lapse.settings.autolaunch && autoLauncher.enable();
+    checkUpdates();
   }
   // ? The app does not quit on closing all windows on MacOs
   app.on("window-all-closed", () => {

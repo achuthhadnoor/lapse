@@ -8,7 +8,7 @@ import { recorder } from "../utils/recorder";
 let window: BrowserWindow | null = null;
 let isOpen = false;
 
-const createBrowserWindow = (srcId: any) => {
+const createBrowserWindow = () => {
   close();
   // Create a temporary browser window to show the timer and close it once done
   const screenBounds = screen.getDisplayNearestPoint(
@@ -43,7 +43,7 @@ const createBrowserWindow = (srcId: any) => {
   window.webContents.on("did-finish-load", () => {
     ipcMain.once("done-timer", () => {
       close();
-      recorder.createScreenshotInterval(srcId);
+      recorder.createScreenshotInterval(recorder.recorderSettings.sourceId);
     });
   });
 

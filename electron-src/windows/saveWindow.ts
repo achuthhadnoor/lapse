@@ -43,13 +43,13 @@ const createBrowserWindow = () => {
   // When the window is ready, show the dialog
   window.webContents.on("did-finish-load", async () => {
     if (window) {
-      window.focus();
       const result = await dialog.showSaveDialog(window, {
         title: "Save File",
         defaultPath: `${app.lapse.settings.savePath}/lapse-${Date.now()}.${
           app.lapse.settings.format
         }`,
       });
+      window.focus();
 
       if (!window.isDestroyed()) {
         // Check if the window is destroyed before accessing it

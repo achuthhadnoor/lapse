@@ -77,18 +77,3 @@ export const ensureScreenCapturePermissions = (
     return true;
   }
 };
-const screenAccessFallback = promptSystemPreferences({
-  message: "Lapse cannot record the screen.",
-  detail:
-    "Lapse requires screen capture access to be able to record the screen. You can grant this in the System Preferences. Afterwards, launch Lapse for the changes to take effect.",
-  systemPreference: "security",
-  systemPreferencesPath: "Privacy_Accessibility",
-});
-export const ensureAccessPermissions = (fallback = screenAccessFallback) => {
-  let hasAccess = systemPreferences.isTrustedAccessibilityClient(false);
-  if (hasAccess) {
-    return true;
-  }
-  fallback({ hasAsked: false });
-  return false;
-};

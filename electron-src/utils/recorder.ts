@@ -126,7 +126,7 @@ export class ScreenRecorder {
       "270p": 42,
       "144p": 48,
     };
-
+    tray.setTrayTitle(`0%`);
     try {
       command
         .input(this.recorderSettings.ffmpegImgPattern)
@@ -219,8 +219,6 @@ export class ScreenRecorder {
       // Set the recording state to rendering
       this.recorderSettings.recordState = RECORDER_STATE.rendering;
       tray.setRenderingTrayMenu();
-      tray.setTrayTitle(`0%`);
-
       if (app.lapse.settings.askSavePath) {
         windowManager.save?.open();
       } else {
@@ -290,13 +288,13 @@ export class ScreenRecorder {
               slashes: true,
             });
 
-        this.sourcesWindow.loadURL(url);
+        this.sourcesWindow?.loadURL(url);
 
         is.development &&
-          this.sourcesWindow.webContents.openDevTools({ mode: "detach" });
+          this.sourcesWindow?.webContents.openDevTools({ mode: "detach" });
         const selectScreen = (_e: any, args: any) => {
           // Check if the window still exists before interacting with it
-          if (!this.sourcesWindow || this.sourcesWindow.isDestroyed()) {
+          if (!this.sourcesWindow || this.sourcesWindow?.isDestroyed()) {
             return;
           }
 
@@ -304,7 +302,7 @@ export class ScreenRecorder {
           selectedSourceId = args.id;
 
           // Close the window once the source is selected
-          this.sourcesWindow.close();
+          this.sourcesWindow?.close();
         };
 
         const closeScreen = (_e: any, _args: any) => {
@@ -362,7 +360,7 @@ export class ScreenRecorder {
           }
           this.recorderSettings.ffmpegImgPattern = join(dirPath, "lapse%d.png");
           this.recorderSettings.imagesDir = dirPath;
-          console.log("Image directory:", dirPath);
+          console.log("===> Image directory:", dirPath);
         }
       );
 
@@ -371,7 +369,7 @@ export class ScreenRecorder {
 
       // Check if countdown is enabled
       if (app.lapse.settings.countdown) {
-        windowManager.timer?.open(this.recorderSettings.sourceId);
+        windowManager.timer?.open();
       } else {
         this.createScreenshotInterval(this.recorderSettings.sourceId);
       }

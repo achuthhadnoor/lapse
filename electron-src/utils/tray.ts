@@ -1,4 +1,11 @@
-import { Menu, MenuItemConstructorOptions, Tray, app, shell } from "electron";
+import {
+  Menu,
+  MenuItemConstructorOptions,
+  Tray,
+  app,
+  dialog,
+  shell,
+} from "electron";
 
 import { recorder } from "./recorder";
 import { INTERVALS, RECORDER_STATE } from "./constants";
@@ -41,6 +48,25 @@ export class TrayManager {
           this.menubar?.setImage(recordIcon);
           this.menubar?.setToolTip("Recording..");
           recorder.resumeRecording();
+        },
+      },
+      {
+        label: "Retake Recording ",
+        click: async () => {
+          // show dialog box to check if they really want to retake again
+          const { response } = await dialog.showMessageBox({
+            type: "warning",
+            buttons: ["Retake Recording", "Cancel"],
+            defaultId: 0,
+            message: "Do you want to Restart the recording?",
+            detail:
+              "Retake will delete the recording till now and restart. Do you want to continue?",
+            cancelId: 1,
+          });
+          if (response === 0) {
+            recorder.initVariables();
+            recorder.startRecording();
+          }
         },
       },
       {
