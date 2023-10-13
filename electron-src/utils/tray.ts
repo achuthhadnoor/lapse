@@ -236,6 +236,7 @@ export class TrayManager {
             alwaysOnTop: true,
             transparent: true,
             frame: false,
+            skipTaskbar:true,
           });
           // Load a blank HTML page
           const url = is.development
@@ -245,6 +246,8 @@ export class TrayManager {
                 protocol: "file:",
                 slashes: true,
               });
+        dialogWindow.setSkipTaskbar(false);
+
           dialogWindow?.loadURL(url);
           // When the window is ready, show the dialog
           dialogWindow?.webContents.on("did-finish-load", () => {

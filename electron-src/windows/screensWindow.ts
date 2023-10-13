@@ -4,7 +4,7 @@ import { format } from "url";
 import { platform } from "os";
 import { windowManager } from "./windowManager";
 import { is } from "electron-util";
-const { activateWindow } = require("mac-windows");
+// const { activateWindow } = require("mac-windows");
 
 let window: BrowserWindow | null = null;
 let isOpen = false;
@@ -22,6 +22,7 @@ const createBrowserWindow = () => {
     alwaysOnTop: true,
     transparent: platform() === "darwin" ? true : false,
     vibrancy: "sidebar",
+    skipTaskbar:true,
     hiddenInMissionControl: true,
     webPreferences: {
       nodeIntegration: true,
@@ -29,6 +30,7 @@ const createBrowserWindow = () => {
       preload: join(__dirname, "../preload.js"),
     },
   });
+  window.setSkipTaskbar(false);
 
   const url = is.development
     ? "http://localhost:8000/screens"
@@ -47,7 +49,7 @@ const createBrowserWindow = () => {
       return;
     }
 
-    activateWindow(args.ownerName);
+    // activateWindow(args.ownerName);
     selectedSourceId = args.id;
 
     // Close the window once the source is selected

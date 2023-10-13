@@ -21,6 +21,7 @@ const createBrowserWindow = () => {
     alwaysOnTop: true,
     transparent: true,
     frame: false,
+    skipTaskbar:true,
     hiddenInMissionControl: true,
     webPreferences: {
       nodeIntegration: true,
@@ -28,6 +29,7 @@ const createBrowserWindow = () => {
       preload: join(__dirname, "../preload.js"),
     },
   });
+  window.setSkipTaskbar(false);
 
   // Load a blank HTML page
   const url = is.development

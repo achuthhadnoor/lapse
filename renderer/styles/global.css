@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html,body{
+  background:#000
+}
+
 .dragable {
   -webkit-app-region: drag;
 }

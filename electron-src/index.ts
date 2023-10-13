@@ -70,7 +70,7 @@ app.whenReady().then(async () => {
   // ? The app does not quit on closing all windows on MacOs
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
-      app.quit();
+      // app.quit();
     }
   });
 

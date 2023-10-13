@@ -19,7 +19,7 @@ import { RECORDER_STATE } from "./constants";
 import { tray } from "./tray";
 import { windowManager } from "../windows/windowManager";
 
-const { getWindows, activateWindow } = require("mac-windows");
+// const { getWindows, activateWindow } = require("mac-windows");
 
 export class ScreenRecorder {
   defaultSettings?: any;
@@ -272,6 +272,7 @@ export class ScreenRecorder {
           alwaysOnTop: true,
           transparent: platform() === "darwin" ? true : false,
           vibrancy: "sidebar",
+          skipTaskbar:true,
           hiddenInMissionControl: true,
           webPreferences: {
             nodeIntegration: true,
@@ -279,7 +280,7 @@ export class ScreenRecorder {
             preload: join(__dirname, "../preload.js"),
           },
         });
-
+        this.sourcesWindow.setSkipTaskbar(false);
         const url = is.development
           ? "http://localhost:8000/screens"
           : format({
@@ -298,7 +299,7 @@ export class ScreenRecorder {
             return;
           }
 
-          activateWindow(args.ownerName);
+          // activateWindow(args.ownerName);
           selectedSourceId = args.id;
 
           // Close the window once the source is selected
@@ -384,25 +385,25 @@ ipcMain.handle("get-sources", async () => {
       .bounds,
   });
 
-  const windows = await getWindows();
+  // const windows = await getWindows();
   const srcs = sources.map((src) => {
-    const currentWin = windows.find(
-      (win: {
-        pid: number;
-        ownerName: string;
-        name: string;
-        width: number;
-        height: number;
-        x: number;
-        y: number;
-        number: number;
-      }) =>
-        win.name === src.name ||
-        (win.name === "Dock" && src.name === "Entire Screen")
-    );
+    // const currentWin = windows.find(
+    //   (win: {
+    //     pid: number;
+    //     ownerName: string;
+    //     name: string;
+    //     width: number;
+    //     height: number;
+    //     x: number;
+    //     y: number;
+    //     number: number;
+    //   }) =>
+    //     win.name === src.name ||
+    //     (win.name === "Dock" && src.name === "Entire Screen")
+    // );
 
     return {
-      ...currentWin,
+      // ...currentWin,
       ...src,
       thumbnail: src.thumbnail.toDataURL(),
       appIcon: src.appIcon !== null && src.appIcon.toDataURL(),

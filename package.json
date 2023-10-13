@@ -18,7 +18,7 @@
     "build-electron": "tsc -p electron-src",
     "build": "npm run build-renderer && npm run build-electron",
     "pack-app": "npm run build && electron-builder --dir",
-    "dist": "rm -rf dist && npm run build && electron-builder",
+    "dist": "npm run build && electron-builder",
     "type-check": "tsc -p ./renderer/tsconfig.json && tsc -p ./electron-src/tsconfig.json"
   },
   "dependencies": {
@@ -30,7 +30,6 @@
     "electron-store": "^8.1.0",
     "electron-util": "^0.17.2",
     "fluent-ffmpeg": "^2.1.2",
-    "mac-windows": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "temp": "^0.9.4"

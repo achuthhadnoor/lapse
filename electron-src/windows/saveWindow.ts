@@ -22,12 +22,14 @@ const createBrowserWindow = () => {
     transparent: true,
     frame: false,
     hiddenInMissionControl: true,
+    skipTaskbar:true,
     webPreferences: {
       nodeIntegration: true,
       allowRunningInsecureContent: true,
       preload: join(__dirname, "../preload.js"),
     },
   });
+  window.setSkipTaskbar(false);
 
   const url = is.development
     ? "http://localhost:8000/empty"
