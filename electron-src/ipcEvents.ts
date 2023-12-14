@@ -52,11 +52,10 @@ const resumeRecordingNow = () => {
 };
 
 export default function init() {
-  ipcMain.on("verified", (event, { id, email, code, name }) => {
+  ipcMain.on("verified", (event, { id, code, name }) => {
     event.returnValue = "Verified";
     let user = {
       id,
-      email,
       code,
       name,
       isVerified: true,
@@ -64,7 +63,6 @@ export default function init() {
     app.lapse.user = user;
     store.set("lapse-user", app.lapse.user);
     windowManager.license?.close();
-    // createTray();
     initializeTray();
   });
 

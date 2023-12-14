@@ -43,3 +43,9 @@
 - show timer in menubar
 
 - show export options when user paused ( resume/ stop recording )
+
+redirects
+
+- [TOS](https://getlapseapp.com/tos)
+- [license](https://getlapseapp.com/download)
+- [how to install][https://getlapseapp.com/install]

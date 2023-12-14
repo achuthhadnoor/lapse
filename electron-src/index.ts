@@ -1,12 +1,15 @@
-import { app, shell } from "electron";
+import {
+  app,
+  //shell
+} from "electron";
 import { enforceMacOSAppLocation, is } from "electron-util";
 import prepareNext from "electron-next";
 
 import "./windows/load";
 import "./utils/recorder";
 import ipcEvents from "./ipcEvents";
-import { ensureScreenCapturePermissions } from "./utils/permission";
-import { initializeTray } from "./utils/tray";
+// import { ensureScreenCapturePermissions } from "./utils/permission";
+// import { initializeTray } from "./utils/tray";
 import { getRecordingState, stopRecording } from "./utils/recorder";
 import { windowManager } from "./windows/windowManager";
 import { checkIfAppIsOpen, checkUpdates } from "./utils/lib";
@@ -40,25 +43,24 @@ app.whenReady().then(async () => {
     console.log("====================================");
   }
   // ? check for updates
-  // ? Check for permissions & user is verified to start using the app
-  if (ensureScreenCapturePermissions()) {
-    if (
-      !app.getLoginItemSettings().wasOpenedAtLogin &&
-      app.lapse.user.isVerified
-    ) {
-      // ! We can add an onboarding logic of explaining how to use the app
-      //? hide the dock icon to shift the uSer focus to the menubar
-      if (app.dock) app.dock.hide();
-      // ? Initialize the tray menu
-      initializeTray();
-      // ? Give a beep sound saying the app is loaded and ready to use
-      shell.beep();
-    } else {
-      // ? License verification
-      windowManager.license?.open();
-    }
-    !is.development && checkUpdates();
-  }
+  // ? user is verified to start using the app
+  // if (
+  //   !app.getLoginItemSettings().wasOpenedAtLogin &&
+  //   app.lapse.user.isVerified
+  // ) {
+  //   // ! We can add an onboarding logic of explaining how to use the app
+  //   //? hide the dock icon to shift the uSer focus to the menubar
+  //   if (app.dock) app.dock.hide();
+  //   // ? Initialize the tray menu
+  //   initializeTray();
+  //   // ? Give a beep sound saying the app is loaded and ready to use
+  //   shell.beep();
+  // } else {
+  // ? License verification
+  windowManager.license?.open();
+  // }
+  !is.development && checkUpdates();
+
   // ? The app does not quit on closing all windows on MacOs
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {

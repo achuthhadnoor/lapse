@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  background-color: rgba(28, 28, 28, 0);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
 .dragable {
   -webkit-app-region: drag;
 }
@@ -34,7 +46,9 @@
 ::-webkit-scrollbar-corner {
   background-color: transparent;
 }
-
+html {
+  @apply accent-[#4aca4a];
+}
 .label-text {
   font-size: 10px;
 }
