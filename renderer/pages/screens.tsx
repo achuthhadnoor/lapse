@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import cl from "classnames";
+
 declare global {
   interface Window {
     electron: any;
@@ -7,7 +8,7 @@ declare global {
 }
 
 export default function Screens() {
-  const [source, setSource] = useState<null | {
+  const [source, setSource] = useState<{
     appIcon: boolean;
     display_id: string;
     height: number;
@@ -15,17 +16,21 @@ export default function Screens() {
     name: string;
     thumbnail: string;
     width: number;
-  }>(null);
+  } | null>(null);
+
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const handleMessage = (event) => {
       if (event.data && event.data.sourceId) {
         window.close();
       }
     };
+
     getSources();
     window.addEventListener("message", handleMessage);
+
     return () => {
       window.removeEventListener("message", handleMessage);
     };
@@ -33,16 +38,25 @@ export default function Screens() {
 
   const getSources = () => {
     setLoading(true);
-    window.electron.ipcRenderer.invoke("get-sources").then((src) => {
-      setSources(JSON.parse(src));
-      setLoading(false);
-    });
+    window.electron.ipcRenderer
+      .invoke("get-sources")
+      .then((src) => {
+        setSources(JSON.parse(src));
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error getting sources:", error);
+        setLoading(false);
+      });
   };
 
   const startRecording = () => {
-    window.electron.ipcRenderer.send("selected-screen", source);
-    window.postMessage(source, "*");
+    if (source) {
+      window.electron.ipcRenderer.send("selected-screen", source);
+      window.postMessage(source, "*");
+    }
   };
+
   const selectSource = (src) => {
     setSource(src);
   };
@@ -52,7 +66,7 @@ export default function Screens() {
       {loading ? (
         <div className="flex justify-center w-full mt-10">
           <svg
-            className="animate-spin  -ml-1 mr-3 h-5 w-5 text-white"
+            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -64,20 +78,20 @@ export default function Screens() {
               r="10"
               stroke="currentColor"
               strokeWidth="4"
-            ></circle>
+            />
             <path
               className="opacity-75"
               fill="currentColor"
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
+            />
           </svg>
         </div>
       ) : (
-        <div className=" flex flex-col dragable text-neutral-800 dark:text-neutral-100 h-screen pb-5">
+        <div className="flex flex-col dragable text-neutral-800 dark:text-neutral-100 h-screen pb-5">
           <div className="flex items-center justify-between p-4">
             <div>Select Screen</div>
             <div className="flex gap-2 align-middle text-neutral-800 dark:text-neutral-100">
-              <span className=" p-2" onClick={getSources}>
+              <span className="p-2" onClick={getSources}>
                 <svg
                   width="18"
                   height="18"
@@ -110,11 +124,11 @@ export default function Screens() {
               </span>
               <span
                 className="p-2"
-                onClick={() => {
+                onClick={() =>
                   window.electron.ipcRenderer.send("close-screen", {
                     status: "close",
-                  });
-                }}
+                  })
+                }
               >
                 <svg
                   width="18"
@@ -141,84 +155,27 @@ export default function Screens() {
               </span>
             </div>
           </div>
-          {/* <div className="flex flex-1"> */}
+
           <div className="flex-1 py-5 max-h-screen overflow-auto grid grid-cols-3 px-5 gap-2 align-middle dark:text-neutral-400 text-neutral-800">
-            {sources?.map((src) => (
-              <div className="relative px-2 pt-5 cursor-pointer " key={src.id}>
+            {sources.map((src) => (
+              <div className="relative px-2 pt-5 cursor-pointer" key={src.id}>
                 <img
                   className={cl(
-                    " h-[100px]  rounded-md gap-1 hover:ring-2 hover:ring-green-700 relative",
+                    "h-[100px] rounded-md gap-1 hover:ring-2 hover:ring-green-700 relative",
                     source?.id === src.id && "ring-2 ring-green-700"
                   )}
                   src={src.thumbnail}
-                  onClick={() => {
-                    selectSource(src);
-                  }}
+                  onClick={() => selectSource(src)}
                 />
                 <div className="text-xs font-semibold pt-4 overflow-ellipsis w-[150px] overflow-hidden">
                   {src.name}
                 </div>
-                {/* <img
-                className="rounded hover:ring-2 hover:ring-green-700 m-5 relative h-10 w-10"
-                src={src.thumbnail}
-              /> */}
               </div>
             ))}
           </div>
-          {/* </div> */}
-          {/* <div className=" flex flex-col w-1/2 gap-4 text-neutral-800 dark:text-neutral-100">
-        <h1 className="px-2 text-2xl mt-10">Options</h1>
-        <div className="flex gap-2 items-center">
-          <label className="px-2">Dimensions</label>
-          <input
-            type="number"
-            className="bg-neutral-200 dark:bg-neutral-900 focus:ring-2 focus:ring-green-600 rounded p-2 outline-none"
-            placeholder="height"
-          />
-          <span>x</span>
-          <input
-            type="number"
-            className="bg-neutral-200 dark:bg-neutral-900 focus:ring-2 focus:ring-green-600 rounded p-2 outline-none"
-            placeholder="width"
-          />
-        </div>
-        <div className="flex">
-          <label className="inline px-2 w-1/5">Framerate</label>
-          <input
-            type="number"
-            className="bg-neutral-200 dark:bg-neutral-900 focus:ring-2 focus:ring-green-600 rounded p-2 outline-none"
-            placeholder="Framerate"
-          />
-        </div>
-        <div className="flex">
-          <label className="inline px-2 w-1/5">Quality</label>
-          <input
-            type="number"
-            className="bg-neutral-200 dark:bg-neutral-900 focus:ring-2 focus:ring-green-600 rounded p-2 outline-none"
-            placeholder="Quality"
-          />
-        </div>
-        <div className="flex">
-          <label className="inline px-2 w-1/5">Export format</label>
-          <select
-            className="bg-neutral-200 dark:bg-neutral-900 focus:ring-2 focus:ring-green-600 rounded px-2 outline-none"
-            defaultValue={"mkv"}
-          >
-            <option value={"mp4"}>mp4</option>
-            <option value={"mkv"}>mkv</option>
-            <option value={"webm"}>webm</option>
-          </select>
-        </div>
-        <div className="flex items-center">
-          <label className="inline px-2 w-1/5">Save path</label>
-          <input
-            type="file"
-            className="bg-neutral-200 dark:bg-neutral-900 focus:ring-2 focus:ring-green-600 rounded p-2 outline-none"
-            placeholder="Quality"
-          />
-        </div>
 
-      </div> */}
+          {/* ... (your commented-out options section) ... */}
+
           <button
             className="bg-green-800 mx-10 my-2 rounded p-2 text-neutral-50"
             onClick={startRecording}

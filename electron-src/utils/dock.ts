@@ -1,28 +1,24 @@
-import {app} from 'electron';
-import {Promisable} from 'type-fest';
+import { app } from "electron";
+import { Promisable } from "type-fest";
 
-export const ensureDockIsShowing = async (action: () => Promisable<void>) => {
-  const wasDockShowing = app.dock.isVisible();
-  if (!wasDockShowing) {
+const setDockVisibility = async (visible: boolean) => {
+  if (visible) {
     await app.dock.show();
-  }
-
-  await action();
-
-  if (!wasDockShowing) {
+  } else {
     app.dock.hide();
   }
 };
 
-export const ensureDockIsShowingSync = (action: () => void) => {
+export const withVisibleDock = async (action: () => Promisable<void>) => {
   const wasDockShowing = app.dock.isVisible();
-  if (!wasDockShowing) {
-    app.dock.show();
-  }
+  await setDockVisibility(true);
+  await action();
+  await setDockVisibility(wasDockShowing);
+};
 
+export const withVisibleDockSync = (action: () => void) => {
+  const wasDockShowing = app.dock.isVisible();
+  setDockVisibility(true);
   action();
-
-  if (!wasDockShowing) {
-    app.dock.hide();
-  }
+  setDockVisibility(wasDockShowing);
 };

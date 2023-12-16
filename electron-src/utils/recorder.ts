@@ -27,6 +27,7 @@ import {
 } from "./tray";
 import showNotification from "../notify";
 import { RECORDER_STATE } from "./constants";
+import log from "./logger";
 
 const { getWindows, activateWindow } = require("mac-windows");
 track();
@@ -45,12 +46,8 @@ let recorderSettings: any = {
 
 export const getRecordingState = () => recorderSettings.recordState;
 
-export const UpdateSettings = (newSettings: any) => {
-  if (newSettings.autolaunch) {
-    autoLauncher.enable();
-  } else {
-    autoLauncher.disable();
-  }
+export const updateSettings = (newSettings: any) => {
+  autoLauncher[newSettings.autolaunch ? "enable" : "disable"]();
   app.lapse.settings = newSettings;
   store.set("lapse", newSettings);
 };
@@ -69,43 +66,45 @@ export const initVariables = () => {
 
 const createScreenshotInterval = (sourceId: string) => {
   recorderSettings.interval = setInterval(async () => {
-    const sources = await desktopCapturer.getSources({
-      types: ["window", "screen"],
-      thumbnailSize: screen.getPrimaryDisplay().bounds,
-    });
-    const source = sources.find((source) => source.id === sourceId);
+    try {
+      const sources = await desktopCapturer.getSources({
+        types: ["window", "screen"],
+        thumbnailSize: screen.getPrimaryDisplay().bounds,
+      });
+      const source = sources.find((src) => src.id === sourceId);
 
-    if (source) {
-      // frameCount += 1;
-      const imgBuffer = Buffer.from(
-        source.thumbnail.toDataURL().split(",")[1],
-        "base64"
-      );
-      const filePath = join(
-        recorderSettings.imagesDir,
-        `lapse${recorderSettings.frameCount++}.png`
-      );
-      console.log(filePath);
-      writeFileSync(filePath, imgBuffer);
-    } else {
-      if (getRecordingState() === RECORDER_STATE.recording) {
-        pauseRecording();
-        setPausedTray();
-        return;
+      if (source) {
+        const imgBuffer = Buffer.from(
+          source.thumbnail.toDataURL().split(",")[1],
+          "base64"
+        );
+        const filePath = join(
+          recorderSettings.imagesDir,
+          `lapse${recorderSettings.frameCount++}.png`
+        );
+        log.info(filePath);
+        writeFileSync(filePath, imgBuffer);
+      } else {
+        handleRecordingError();
       }
-      initVariables();
-      console.log(
-        source,
-        "Error while processing! The recording will be saved to device."
-      );
-      // stopRecording();
+    } catch (error) {
+      handleRecordingError();
     }
   }, app.lapse.settings.intervals * 1000);
 };
 
+const handleRecordingError = () => {
+  if (getRecordingState() === RECORDER_STATE.recording) {
+    pauseRecording();
+    setPausedTray();
+  }
+  initVariables();
+  console.error(
+    "Error while processing! The recording will be saved to device."
+  );
+};
+
 export const prepareVideo = (outputPath: any) => {
-  let startTime = Date.now();
-  console.log("Start Time Create Timelape " + startTime);
   const command = ffmpeg();
   const { framerate, quality } = app.lapse.settings;
   const qualities: any = {
@@ -119,6 +118,7 @@ export const prepareVideo = (outputPath: any) => {
     "270p": 42,
     "144p": 48,
   };
+
   command
     .input(recorderSettings.ffmpegImgPattern)
     .inputOptions(["-y", `-r ${framerate}`, "-f image2", "-start_number 0"])
@@ -141,108 +141,95 @@ export const prepareVideo = (outputPath: any) => {
       "-vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
     ])
     .output(outputPath)
-    .on("end", () => {
-      console.log("Complete! Click to open the video ");
-      initVariables();
-      showNotification("Complete! Click to open the video", () => {
-        shell.openPath(outputPath);
-      });
-    })
-    .on("error", (err) => {
-      console.log(`An error occurred: ${err.message}`);
-      showNotification(`An error occurred: ${err.message}`);
-      initVariables();
-    })
-    .on("progress", (process) => {
-      console.log("====================================");
-      console.log(`=>>>>>>>>> ${process.percent.toFixed(2)}`);
-      console.log("====================================");
-      setTrayTitle(` ${process.percent.toFixed(2)}% `);
-    })
-    // .on("stderr", (progress) => {
-    //   const progressMatch = progress
-    //     .toString()
-    //     .match(/time=(\d+:\d+:\d+\.\d+)/);
-    //   if (progressMatch) {
-    //     const numberOfImages = recorderSettings.frameCount; // Replace with the actual number of images
-    //     const videoDurationInSeconds = numberOfImages / framerate;
-    //     const timeString = progressMatch[1];
-    //     const [hours, minutes, seconds] = timeString.split(":").map(parseFloat);
-    //     const totalTimeInSeconds = hours * 3600 + minutes * 60 + seconds;
-    //     const progressPercentage =
-    //       (totalTimeInSeconds / videoDurationInSeconds) * 100;
-    //     console.log(`Progress: ${progressPercentage.toFixed(2)}%`);
-    //   }
-    // })
-    .on("close", (code) => {
-      if (code === 0) {
-        console.log("Video rendering completed successfully!");
-        // Do something when rendering is complete
-      } else {
-        console.error(`Video rendering failed with code ${code}`);
-        // Handle the error
-      }
-    })
+    .on("end", handleVideoRenderingCompletion(outputPath))
+    .on("error", handleVideoRenderingError)
+    .on("progress", handleVideoRenderingProgress)
+    .on("close", handleVideoRenderingClose)
     .run();
 };
 
+const handleVideoRenderingCompletion = (outputPath: string) => () => {
+  log.info("Complete! Click to open the video ");
+  initVariables();
+  showNotification("Complete! Click to open the video", () => {
+    shell.openPath(outputPath);
+  });
+};
+
+const handleVideoRenderingError = (err: { message: any }) => {
+  console.error(`An error occurred: ${err.message}`);
+  showNotification(`An error occurred: ${err.message}`);
+  initVariables();
+};
+
+const handleVideoRenderingProgress = (process: { percent: number }) => {
+  log.warn(`=>>>>>>>>> ${process.percent.toFixed(2)}`);
+  setTrayTitle(` ${process.percent.toFixed(2)}% `);
+};
+
+const handleVideoRenderingClose = (code: number) => {
+  if (code === 0) {
+    log.info("Video rendering completed successfully!");
+  } else {
+    console.error(`Video rendering failed with code ${code}`);
+  }
+};
+
 export const stopRecording = async () => {
-  let filePath = null;
   clearInterval(recorderSettings.interval);
   if (app.lapse.settings.askSavePath) {
-    // open dialog here
-    const screenBounds = screen.getDisplayNearestPoint(
-      screen.getCursorScreenPoint()
-    ).bounds;
-    let dialogWindow: BrowserWindow | null = new BrowserWindow({
-      height: screenBounds.height,
-      width: screenBounds.width,
-      show: false, // Create the window initially hidden
-      alwaysOnTop: true,
-      transparent: true,
-      frame: false,
-    });
-    // Load a blank HTML page
-    const url = is.development
-      ? "http://localhost:8000/empty"
-      : format({
-          pathname: join(__dirname, "../../renderer/out/empty.html"),
-          protocol: "file:",
-          slashes: true,
-        });
-    dialogWindow.loadURL(url);
-    // When the window is ready, show the dialog
-    dialogWindow.webContents.on("did-finish-load", async () => {
-      if (dialogWindow) {
-        dialogWindow.focus();
-        const result = await dialog.showSaveDialog(dialogWindow, {
-          title: "Save File",
-          defaultPath: `${app.lapse.settings.savePath}/lapse-${Date.now()}.${
-            app.lapse.settings.format
-          }`,
-        });
-        if (!result.canceled) {
-          recorderSettings.recordState = RECORDER_STATE.rendering;
-          setRenderingTray();
-          const path = result.filePath;
-          prepareVideo(path);
-        } else {
-          initVariables();
-        }
-        // Close the dialog window
-        dialogWindow?.close();
-        dialogWindow = null;
-      }
-    });
+    await handleSaveDialog();
   } else {
     recorderSettings.recordState = RECORDER_STATE.rendering;
     setRenderingTray();
-    filePath = app.lapse.settings.savePath;
+    const filePath = app.lapse.settings.savePath;
     prepareVideo(
       `${filePath}/lapse-${Date.now()}.${app.lapse.settings.format}`
     );
   }
-  return;
+};
+
+const handleSaveDialog = async () => {
+  const screenBounds = screen.getDisplayNearestPoint(
+    screen.getCursorScreenPoint()
+  ).bounds;
+  let dialogWindow = new BrowserWindow({
+    height: screenBounds.height,
+    width: screenBounds.width,
+    show: false,
+    alwaysOnTop: true,
+    transparent: true,
+    frame: false,
+  });
+
+  const url = is.development
+    ? "http://localhost:8000/empty"
+    : format({
+        pathname: join(__dirname, "../../renderer/out/empty.html"),
+        protocol: "file:",
+        slashes: true,
+      });
+
+  dialogWindow.loadURL(url);
+
+  dialogWindow.webContents.on("did-finish-load", async () => {
+    dialogWindow.focus();
+    const result = await dialog.showSaveDialog(dialogWindow, {
+      title: "Save File",
+      defaultPath: `${app.lapse.settings.savePath}/lapse-${Date.now()}.${
+        app.lapse.settings.format
+      }`,
+    });
+    if (!result.canceled) {
+      recorderSettings.recordState = RECORDER_STATE.rendering;
+      setRenderingTray();
+      const path = result.filePath;
+      prepareVideo(path);
+    } else {
+      initVariables();
+    }
+    dialogWindow.close();
+  });
 };
 
 export const processRecording = () => {};
@@ -253,67 +240,27 @@ export const resumeRecording = () => {
 };
 
 export const pauseRecording = () => {
-  // send a notification saying recording paused
   recorderSettings.recordState = RECORDER_STATE.paused;
   clearInterval(recorderSettings.interval);
 };
 
 export const startRecording = async () => {
-  // ? We resolve this promise if recording started or we tell user if it fails
   recorderSettings.sourceId = await selectSource();
   recorderSettings.frameCount = 0;
   if (recorderSettings.sourceId) {
-    // ! add custom images save location
-    mkdir("lapse_images", (err: any, dirPath: any) => {
+    mkdir("lapse_images", (err, dirPath) => {
       if (err) {
-        console.log("====================================");
-        console.log(err);
-        console.log("====================================");
+        log.error(err);
         throw err;
       }
       recorderSettings.ffmpegImgPattern = join(dirPath, "lapse%d.png");
       recorderSettings.imagesDir = dirPath;
     });
-    // ? set recording state
+
     recorderSettings.recordState = RECORDER_STATE.paused;
-    // ? Check if countdown is enabled
+
     if (app.lapse.settings.countdown) {
-      // ? create a temp browser window to show timer and close it once
-      // create a temp browser window to show timer and close it once
-      const screenBounds = screen.getDisplayNearestPoint(
-        screen.getCursorScreenPoint()
-      ).bounds;
-      let dialogWindow: BrowserWindow | null = new BrowserWindow({
-        height: screenBounds.height,
-        width: screenBounds.width,
-        // show: false, // Create the window initially hidden
-        alwaysOnTop: true,
-        transparent: true,
-        frame: false,
-        webPreferences: {
-          // devTools: true,
-          nodeIntegration: true,
-          allowRunningInsecureContent: true,
-          preload: join(__dirname, "../preload.js"),
-        },
-      });
-      // Load a blank HTML page
-      const url = is.development
-        ? "http://localhost:8000/timer"
-        : format({
-            pathname: join(__dirname, "../../renderer/out/timer.html"),
-            protocol: "file:",
-            slashes: true,
-          });
-      dialogWindow.loadURL(url);
-      dialogWindow.webContents.on("did-finish-load", () => {});
-      dialogWindow.setIgnoreMouseEvents(true);
-      // Handle the dialog window being closed
-      dialogWindow.on("closed", () => {
-        dialogWindow = null;
-      });
-      ipcMain.on("done-timer", () => {
-        dialogWindow?.close();
+      showTimerWindow(() => {
         createScreenshotInterval(recorderSettings.sourceId);
       });
     } else {
@@ -322,26 +269,60 @@ export const startRecording = async () => {
   }
 };
 
-async function selectSource() {
-  /*
-   ? This function pops up a window to select the screen/ app to record.
-   ! give an option for user to select the screens that can be added to hide list in this from next time
-  */
-  let selectedSourceId: string = "0";
-  let closeWindowMessage = false;
-
-  // ? gets all the available sources and their metadata
-  const sources = await desktopCapturer.getSources({
-    types: ["window", "screen"],
-    thumbnailSize: screen.getPrimaryDisplay().bounds,
+const showTimerWindow = (callback: { (): void; (): void }) => {
+  const screenBounds = screen.getDisplayNearestPoint(
+    screen.getCursorScreenPoint()
+  ).bounds;
+  let dialogWindow: any = new BrowserWindow({
+    height: screenBounds.height,
+    width: screenBounds.width,
+    alwaysOnTop: true,
+    transparent: true,
+    frame: false,
+    webPreferences: {
+      nodeIntegration: true,
+      allowRunningInsecureContent: true,
+      preload: join(__dirname, "../preload.js"),
+    },
   });
 
-  // ! By default set the Entire screen as default
-  selectedSourceId = sources[0].id;
+  const url = is.development
+    ? "http://localhost:8000/timer"
+    : format({
+        pathname: join(__dirname, "../../renderer/out/timer.html"),
+        protocol: "file:",
+        slashes: true,
+      });
 
-  return new Promise(async (resolve, reject) => {
-    try {
-      var window = new BrowserWindow({
+  dialogWindow.loadURL(url);
+  dialogWindow.webContents.on("did-finish-load", () => {});
+
+  dialogWindow.setIgnoreMouseEvents(true);
+
+  dialogWindow.on("closed", () => {
+    dialogWindow = null;
+  });
+
+  ipcMain.on("done-timer", () => {
+    dialogWindow.close();
+    callback();
+  });
+};
+
+async function selectSource() {
+  try {
+    let selectedSourceId = "0";
+    let closeWindowMessage = false;
+
+    const sources = await desktopCapturer.getSources({
+      types: ["window", "screen"],
+      thumbnailSize: screen.getPrimaryDisplay().bounds,
+    });
+
+    selectedSourceId = sources[0].id;
+
+    return new Promise((resolve) => {
+      const window = new BrowserWindow({
         height: 600,
         width: 500,
         fullscreen: false,
@@ -351,7 +332,6 @@ async function selectSource() {
         transparent: platform() === "darwin" ? true : false,
         vibrancy: "sidebar",
         webPreferences: {
-          // devTools: true,
           nodeIntegration: true,
           allowRunningInsecureContent: true,
           preload: join(__dirname, "../preload.js"),
@@ -374,10 +354,12 @@ async function selectSource() {
         selectedSourceId = args.id;
         window.close();
       });
+
       ipcMain.once("close-screen", (_e, _args) => {
         window.close();
         closeWindowMessage = true;
       });
+
       window.on("closed", () => {
         if (closeWindowMessage) {
           closeWindowMessage = false;
@@ -385,41 +367,37 @@ async function selectSource() {
           resolve(selectedSourceId);
         }
       });
-    } catch (error) {
-      // console.log(`error: ${error}`);
-      reject(`error: ${error}`);
-    }
-  });
+    });
+  } catch (error) {
+    log.error(`Error: ${error}`);
+    throw error;
+  }
 }
 
 ipcMain.handle("get-sources", async () => {
-  const sources = await desktopCapturer.getSources({
-    types: ["window", "screen"],
-    thumbnailSize: screen.getPrimaryDisplay().bounds,
-  });
-  const windows = await getWindows();
-  const srcs = sources.map((src) => {
-    const currentWin = windows.find(
-      (win: {
-        pid: number;
-        ownerName: string;
-        name: string;
-        width: number;
-        height: number;
-        x: number;
-        y: number;
-        number: number;
-      }) =>
-        win.name === src.name ||
-        (win.name === "Dock" && src.name === "Entire Screen")
-    );
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["window", "screen"],
+      thumbnailSize: screen.getPrimaryDisplay().bounds,
+    });
+    const windows = await getWindows();
+    const srcs = sources.map((src) => {
+      const currentWin = windows.find(
+        (win: { name: string }) =>
+          win.name === src.name ||
+          (win.name === "Dock" && src.name === "Entire Screen")
+      );
 
-    return {
-      ...currentWin,
-      ...src,
-      thumbnail: src.thumbnail.toDataURL(),
-      appIcon: src.appIcon !== null && src.appIcon.toDataURL(),
-    };
-  });
-  return JSON.stringify(srcs);
+      return {
+        ...currentWin,
+        ...src,
+        thumbnail: src.thumbnail.toDataURL(),
+        appIcon: src.appIcon !== null && src.appIcon.toDataURL(),
+      };
+    });
+    return JSON.stringify(srcs);
+  } catch (error) {
+    console.error(`Error: ${error}`);
+    throw error;
+  }
 });

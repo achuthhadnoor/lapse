@@ -9,18 +9,17 @@ import {
 } from "./utils/recorder";
 import { RECORDER_STATE } from "./utils/constants";
 
-export const verifyUser = () => {
-  const url = "https://getlapseapp.com/api/verify";
+const API_URL = "https://getlapseapp.com/api/verify";
+
+export const makeApiRequest = (email: any, license: any) => {
   const params = new URLSearchParams({
-    email: "example@example.com",
-    license: "12345",
+    email,
+    license,
   });
+
   const request = net.request({
     method: "POST",
-    url: url,
-    // headers: {
-    //   "Content-Type": "application/x-www-form-urlencoded",
-    // },
+    url: API_URL,
   });
 
   request.on("response", (response) => {
@@ -37,6 +36,7 @@ export const verifyUser = () => {
   request.write(params.toString());
   request.end();
 };
+
 const pauseRecordingNow = () => {
   if (getRecordingState() === RECORDER_STATE.recording) {
     pauseRecording();
@@ -51,10 +51,15 @@ const resumeRecordingNow = () => {
   }
 };
 
+const handlePowerEvent = (event: any) => {
+  console.log(event);
+  pauseRecordingNow();
+};
+
 export default function init() {
   ipcMain.on("verified", (event, { id, code, name }) => {
     event.returnValue = "Verified";
-    let user = {
+    const user = {
       id,
       code,
       name,
@@ -70,40 +75,11 @@ export default function init() {
     app.quit();
   });
 
-  powerMonitor.on("lock-screen", () => {
-    console.log("lock-screen");
-
-    pauseRecordingNow;
-  });
-  powerMonitor.on("shutdown", () => {
-    console.log("shutdown");
-
-    pauseRecordingNow();
-  });
-  powerMonitor.on("suspend", () => {
-    console.log("suspend");
-
-    pauseRecordingNow();
-  });
-  powerMonitor.on("user-did-resign-active", () => {
-    console.log("user-did-resign-active");
-
-    pauseRecordingNow();
-  });
-
-  powerMonitor.on("resume", () => {
-    console.log("resume");
-
-    resumeRecordingNow();
-  });
-  powerMonitor.on("unlock-screen", () => {
-    console.log("unlock-screen");
-
-    resumeRecordingNow();
-  });
-  powerMonitor.on("user-did-become-active", () => {
-    console.log("user-did-become-active");
-
-    resumeRecordingNow();
-  });
+  powerMonitor.on("lock-screen", handlePowerEvent);
+  powerMonitor.on("shutdown", handlePowerEvent);
+  powerMonitor.on("suspend", handlePowerEvent);
+  powerMonitor.on("user-did-resign-active", handlePowerEvent);
+  powerMonitor.on("resume", resumeRecordingNow);
+  powerMonitor.on("unlock-screen", resumeRecordingNow);
+  powerMonitor.on("user-did-become-active", resumeRecordingNow);
 }

@@ -1,6 +1,6 @@
 import { shell, dialog, app, systemPreferences } from "electron";
 import { is, openSystemPreferences } from "electron-util";
-import { ensureDockIsShowing } from "./dock";
+import { withVisibleDock } from "./dock";
 
 let isDialogShowing = false;
 
@@ -17,7 +17,7 @@ const promptSystemPreferences =
     }
 
     isDialogShowing = true;
-    await ensureDockIsShowing(async () => {
+    await withVisibleDock(async () => {
       shell.beep();
       const { response } = await dialog.showMessageBox({
         type: "warning",

@@ -4,6 +4,7 @@ import { format } from "url";
 import { hostname, platform } from "os";
 import { windowManager } from "./windowManager";
 import { is } from "electron-util";
+import log from "../utils/logger";
 
 let window: BrowserWindow | null = null,
   isOpen = false;
@@ -47,9 +48,7 @@ const close = () => {
 const windowOpenCheck = () => isOpen;
 
 ipcMain.handle("get-hostname", (_e, _args) => {
-  console.log("====================================");
-  console.log(hostname());
-  console.log("====================================");
+  log.info(hostname());
   return hostname();
 });
 

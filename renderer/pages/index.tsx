@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import cl from "classnames";
 import { Logo, codes } from "../constants";
+
 declare global {
   interface Window {
     electron: any;
@@ -25,6 +26,13 @@ const IndexPage = () => {
     isVerified: false,
   });
   const limit = 10;
+
+  useEffect(() => {
+    if (window) {
+      setIsWindows(window.electron.ipcRenderer.platform() !== "darwin");
+    }
+  }, []);
+
   const nestedValue = (mainObject, key) => {
     try {
       return key
@@ -34,112 +42,116 @@ const IndexPage = () => {
       return null;
     }
   };
+
   const gumroad = async (name) => {
-    // https://api.gumroad.com/v2/licenses/verify
-    axios
-      .post("https://api.gumroad.com/v2/licenses/verify", {
-        product_permalink: "lapse_app",
-        license_key: licenseKey,
-        increment_uses_count: true,
-        // email: email,
-      })
-      .then((response) => {
-        const uses = nestedValue(response, "data.uses");
-
-        if (uses > limit) {
-          alert("Sorry, This licence expired!");
-          setLoading(false);
-          return;
+    try {
+      const response = await axios.post(
+        "https://api.gumroad.com/v2/licenses/verify",
+        {
+          product_permalink: "lapse_app",
+          license_key: licenseKey,
+          increment_uses_count: true,
         }
+      );
 
-        const refunded = nestedValue(response, "data.purchase.refunded");
+      const uses = nestedValue(response, "data.uses");
 
-        if (refunded) {
-          alert("Sorry. This purchase has been refunded.");
-          setLoading(false);
-          return;
-        }
+      if (uses > limit) {
+        handleAlert("Sorry, This license has expired!");
+        return;
+      }
 
-        const chargebacked = nestedValue(
-          response,
-          "data.purchase.chargebacked"
-        );
+      const refunded = nestedValue(response, "data.purchase.refunded");
+      if (refunded) {
+        handleAlert("Sorry, This purchase has been refunded.");
+        return;
+      }
 
-        if (chargebacked) {
-          alert("Sorry. This purchase has been chargebacked.");
-          setLoading(false);
-          return;
-        }
+      const chargebacked = nestedValue(response, "data.purchase.chargebacked");
+      if (chargebacked) {
+        handleAlert("Sorry, This purchase has been chargebacked.");
+        return;
+      }
+
+      setLicenseDetails({
+        id: response.data.purchase.id,
+        code: licenseKey,
+        hostname: name,
+        name: response.data.purchase.name,
+        isVerified: true,
+      });
+      setPermissions(true);
+    } catch (error) {
+      handleGumroadError(error, name);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGumroadError = (error, name) => {
+    if (!error.response) {
+      handleAlert("Please check your internet connection.");
+    } else if (error.response.status && error.response.status >= 500) {
+      handleAlert("Oh no. Lapse can't be reached. Please try again later.");
+    } else {
+      if (codes.includes(licenseKey)) {
         setLicenseDetails({
-          id: response.data.purchase.id,
-          code: licenseKey,
+          id: licenseKey,
           hostname: name,
-          name: response.data.purchase.name,
+          code: licenseKey,
+          name,
           isVerified: true,
         });
         setPermissions(true);
-        setLoading(false);
-      })
-      .catch((error) => {
-        if (!error.response) {
-          alert("Please check your internet connection.");
-          setLoading(false);
-        } else if (error.response.status && error.response.status >= 500) {
-          alert("Oh no. Lapse can't be reached. Please try again later.");
-          setLoading(false);
-        } else {
-          if (codes.includes(licenseKey)) {
-            setLicenseDetails({
-              id: licenseKey,
-              hostname: name,
-              code: licenseKey,
-              name,
-              isVerified: true,
-            });
-            setLoading(false);
-            setPermissions(true);
-          } else {
-            alert("Sorry. This license does not exist.");
-          }
-        }
-      });
+      } else {
+        handleAlert("Sorry. This license does not exist.");
+      }
+    }
   };
 
+  const handleAlert = (message) => {
+    alert(message);
+  };
   useEffect(() => {
     if (window) {
       setIsWindows(window.electron.ipcRenderer.platform() !== "darwin");
     }
   });
 
-  const validateActivation = (e: any) => {
+  const validateActivation = (e) => {
     e.preventDefault();
-    const newArr = [];
     setLoading(true);
+    const newArr = [];
+
     if (
       licenseKey !== "" &&
       licenseKey.length === 19 &&
       licenseKey.split("-").length === 4
     ) {
-      // perform license check
       setLicenseErr(false);
     } else {
       newArr.push("License key is invalid");
       setLicenseErr(true);
     }
+
     if (!agree) {
-      newArr.push("Accept license agreement");
+      newArr.push("Accept the license agreement");
     }
+
     if (newArr.length > 0) {
       setErrors(newArr);
       setLoading(false);
     } else {
       window.electron.ipcRenderer.invoke("get-hostname").then((e) => {
-        debugger;
         gumroad(e);
       });
     }
   };
-  const grantedPermissions = () => {};
+
+  const grantedPermissions = () => {
+    window.electron.ipcRenderer.send("verified", licenceDetails);
+  };
+
   return (
     <>
       <div className="fixed flex gap-2 top-4 left-[15px] opacity-[0.3] transition ease-in-out text-neutral-700 dark:text-neutral-300">
@@ -154,7 +166,9 @@ const IndexPage = () => {
           <circle cx="48" cy="8" r="5.5" stroke="currentColor"></circle>
         </svg>
       </div>
+
       {permissions ? (
+        // Render UI for granted permissions
         <form
           className="fixed flex flex-col gap-2 px-6 py-1 dragable inset-0 justify-center my-4"
           onSubmit={grantedPermissions}
@@ -179,19 +193,19 @@ const IndexPage = () => {
             </u>
           </div>
           <button
+            type="submit"
             className="flex justify-center align-center items-center p-2 dark:bg-green-500 rounded text-green-900 font-semibold bg-green-400 no-drag "
-            onClick={() => {
-              window.electron.ipcRenderer.send("verified", licenceDetails);
-            }}
           >
             Launch the app
           </button>
         </form>
       ) : (
+        // Render UI for license activation
         <form
           className="fixed flex flex-col justify-between px-6 py-1 dragable inset-0 "
           onSubmit={validateActivation}
         >
+          {/* Content for license activation */}
           <div className="flex flex-1 flex-col pt-6 ">
             <Logo />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
@@ -328,28 +342,3 @@ const IndexPage = () => {
 };
 
 export default IndexPage;
-/*
-        {
-            "success": true,
-            "uses": 3,
-            "purchase": {
-            "id": "OmyG5dPleDsByKGHsneuDQ==",
-            "product_name": "licenses demo product",
-            "created_at": "2014-04-05T00:21:56Z",
-            "full_name": "Maxwell Elliott",
-            "variants": "",
-            "refunded": false,
-            # purchase was refunded, non-subscription product only
-            "chargebacked": false,
-            # purchase was refunded, non-subscription product only
-            "subscription_cancelled_at": null,
-            # subscription was cancelled,
-            subscription product only
-            "subscription_failed_at": null,
-            # we were unable to charge the subscriber's card
-            "custom_fields": [],
-            "email": "maxwell@gumroad.com"
-            }
-        }
-        
-        */
