@@ -2,8 +2,8 @@ import { app, ipcMain, powerMonitor, net } from "electron";
 import { store } from "./utils/store";
 import { windowManager } from "./windows/windowManager";
 import { recorder } from "./utils/recorder";
-import { RECORDER_STATE } from "./utils/constants";
 import { tray } from "./utils/tray";
+import log from "./utils/logger";
 
 export const verifyUser = () => {
   const url = "https://getlapseapp.com/api/verify";
@@ -26,7 +26,7 @@ export const verifyUser = () => {
     });
     response.on("end", () => {
       const data = JSON.parse(body);
-      console.log(data);
+      log.info(data);
     });
   });
 
@@ -34,14 +34,14 @@ export const verifyUser = () => {
   request.end();
 };
 const pauseRecordingNow = () => {
-  if (recorder.getRecordingState() === RECORDER_STATE.recording) {
+  if (recorder.isRecording()) {
     recorder.pauseRecording();
     tray.setPausedTrayMenu();
   }
 };
 
 const resumeRecordingNow = () => {
-  if (recorder.getRecordingState() === RECORDER_STATE.paused) {
+  if (recorder.isRecording()) {
     recorder.resumeRecording();
     tray.setRecordingTrayMenu();
   }
@@ -69,42 +69,41 @@ export default function init() {
     });
 
     powerMonitor.on("lock-screen", () => {
-      console.log("==> ipcEvents", "lock-screen");
-
+      log.info("==> ipcEvents", "lock-screen");
       pauseRecordingNow;
     });
     powerMonitor.on("shutdown", () => {
-      console.log("==> ipcEvents", "shutdown");
+      log.info("==> ipcEvents", "shutdown");
 
       pauseRecordingNow();
     });
     powerMonitor.on("suspend", () => {
-      console.log("==> ipcEvents", "suspend");
+      log.info("==> ipcEvents", "suspend");
 
       pauseRecordingNow();
     });
     powerMonitor.on("user-did-resign-active", () => {
-      console.log("==> ipcEvents", "user-did-resign-active");
+      log.info("==> ipcEvents", "user-did-resign-active");
 
       pauseRecordingNow();
     });
 
     powerMonitor.on("resume", () => {
-      console.log("==> ipcEvents", "resume");
+      log.info("==> ipcEvents", "resume");
 
       resumeRecordingNow();
     });
     powerMonitor.on("unlock-screen", () => {
-      console.log("==> ipcEvents", "unlock-screen");
+      log.info("==> ipcEvents", "unlock-screen");
 
       resumeRecordingNow();
     });
     powerMonitor.on("user-did-become-active", () => {
-      console.log("==> ipcEvents", "user-did-become-active");
+      log.info("==> ipcEvents", "user-did-become-active");
       resumeRecordingNow();
     });
-    console.log("==> ipcEvents", "registered ipc events ");
+    log.info("==> ipcEvents", "registered ipc events ");
   } catch (error) {
-    console.log("==> ipcEvents", error);
+    log.info("==> ipcEvents", error);
   }
 }

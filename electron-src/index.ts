@@ -1,84 +1,137 @@
-import { app, shell } from "electron";
-import { enforceMacOSAppLocation, is } from "electron-util";
+import { app, dialog, shell } from "electron";
+import { is, enforceMacOSAppLocation } from "electron-util";
 import prepareNext from "electron-next";
 
 import "./windows/load";
 import "./utils/recorder";
-import ipcEvents from "./ipcEvents";
+import initializeIPCEvents from "./ipcEvents";
 import { ensureScreenCapturePermissions } from "./utils/permission";
 import { windowManager } from "./windows/windowManager";
 import { autoLauncher, checkIfAppIsOpen, checkUpdates } from "./utils/lib";
 import { loadAppData } from "./utils/store";
-import { RECORDER_STATE } from "./utils/constants";
 import { tray } from "./utils/tray";
 import { recorder } from "./utils/recorder";
+import log from "./utils/logger";
 
-// ? Check open state to avoid duplicate app launches
+log.info("Starting the application...");
+// Handle unhandled promise rejections globally
+process.on("unhandledRejection", (reason, promise) => {
+  log.error("Unhandled Promise Rejection at:", promise, "reason:", reason);
+});
+// Set up error handling for the renderer process
+process.on("uncaughtException", (error) => {
+  log.error("Uncaught Exception:", error);
+  dialog.showErrorBox(
+    "Application Error",
+    "The application encountered an error and will close."
+  );
+  app.quit();
+});
+
+app.allowRendererProcessReuse = true;
+
+// Check open state to avoid duplicate app launches
 checkIfAppIsOpen();
-// ? Load app data
+
+// Load app data
 loadAppData();
-console.log("====> data", JSON.stringify(app.lapse));
 
-// ? init IPC Events
-ipcEvents();
+// Initialize IPC Events
+initializeIPCEvents();
 
-app.whenReady().then(async () => {
-  // ? Disable CORS to send API request from the browserView
+async function setupApp() {
+  // Disable CORS to send API request from the browserView
   app.commandLine.appendSwitch("disable-features", "CrossOriginOpenerPolicy");
-  // ? About panel when user press space bar on the app icon
+
+  // About panel when the user presses the space bar on the app icon
   app.setAboutPanelOptions({ copyright: "Copyright © lapse" });
-  // ? Set default protocol to app name lapse:// like notion:// to capture sign in
+
+  // Set default protocol to app name lapse:// like notion:// to capture sign in
   if (!app.isDefaultProtocolClient("lapse")) {
     app.setAsDefaultProtocolClient("lapse");
   }
-  // * Ensure the .app is moved to application folder as it will only be in read-only mode outside that
-  !is.development && enforceMacOSAppLocation();
-  // ? Load the nextJS app
+
+  // Ensure the .app is moved to the application folder as it will only be in read-only mode outside that
+  if (!is.development) {
+    enforceMacOSAppLocation();
+  }
+
+  // Load the Next.js app
   try {
     await prepareNext("./renderer");
-    console.log("==> renderer", "loaded renderer");
+    log.info("==> renderer", "loaded renderer");
   } catch (error) {
-    console.log("====================================");
-    console.log("==> renderer", error);
-    console.log("====================================");
+    log.error("Error loading renderer:", error);
   }
-  // ? check for updates
-  // ? Check for permissions & user is verified to start using the app
 
+  // Check for updates
+  // Check for permissions & verify the user to start using the app
   if (!ensureScreenCapturePermissions()) {
-    console.log("==> permissions : no permissions found");
+    log.info("==> permissions : no permissions found");
     return;
   }
-  // !app.getLoginItemSettings().wasOpenedAtLogin &&
+
+  // Perform additional setup if the user is verified
   if (app.lapse.user.isVerified) {
-    // ! We can add an onboarding logic of explaining how to use the app
-    //? hide the dock icon to shift the uSer focus to the menubar
-    if (app.dock) app.dock.hide();
-    // ? Initialize the tray menu
-    tray.initializeTray();
-    // ? Give a beep sound saying the app is loaded and ready to use
-    shell.beep();
+    handleVerifiedUser();
   } else {
-    // ? License verification
-    console.log("==> ipcEvents", "license window opening...");
-    windowManager.license?.open();
+    handleUnverifiedUser();
   }
+
+  // Additional tasks if not in development
   if (!is.development) {
+    // Enable auto-launch if configured
     app.lapse.settings.autolaunch && autoLauncher.enable();
+
+    // Check for updates
     checkUpdates();
   }
-  // ? The app does not quit on closing all windows on MacOs
-  app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
-      // app.quit();
-    }
-  });
+}
 
-  app.on("before-quit", async () => {
-    // ! Pause and ask user to save recording or not
-    // ? Prompt the user to save recording before quit
-    if (recorder.getRecordingState() === RECORDER_STATE.recording) {
-      await recorder.stopRecording();
-    }
-  });
+export function handleVerifiedUser() {
+  // Additional logic for verified users
+  // Hide the dock icon to shift the user focus to the menubar
+  if (app.dock) app.dock.hide();
+
+  // Initialize the tray menu
+  tray.initializeTray();
+
+  // Give a beep sound saying the app is loaded and ready to use
+  shell.beep();
+}
+
+function handleUnverifiedUser() {
+  // License verification
+  log.info("license window opening...");
+  windowManager.license?.open();
+}
+
+app.on("window-all-closed", () => {
+  // do not quit app
 });
+// Pause and ask the user to save recording or not before quitting
+app.on("before-quit", async () => {
+  // ! Pause and ask user to save recording or not
+  // ? Prompt the user to save recording before quit
+  log.info("recorder state", recorder.getRecordingState());
+  if (recorder.isRecording()) {
+    const { response } = await dialog.showMessageBox({
+      type: "warning",
+      buttons: ["Save recording", "Cancel"],
+      defaultId: 0,
+      message: "Do you want to Save the recording?",
+      detail:
+        "Cancel will delete the recording till now. Do you want to continue?",
+      cancelId: 1,
+    });
+    if (response === 0) {
+      recorder.stopRecording();
+    } else {
+      recorder.initVariables();
+      app.quit();
+    }
+  }
+});
+
+// Main application setup
+app.whenReady().then(setupApp);

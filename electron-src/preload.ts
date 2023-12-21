@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge } from "electron";
+import { ipcRenderer, contextBridge, shell } from "electron";
 import { platform } from "os";
 
 contextBridge.exposeInMainWorld("electron", {
@@ -16,5 +16,6 @@ contextBridge.exposeInMainWorld("electron", {
       name: string | symbol,
       handler: (...args: any[]) => void
     ) => ipcRenderer.addListener(name, handler),
+    navigate: (link: string) => shell.openExternal(link),
   },
 });

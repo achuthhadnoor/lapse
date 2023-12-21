@@ -26,6 +26,7 @@ import {
 
 import { format } from "url";
 import { join } from "path";
+import log from "./logger";
 
 export class TrayManager {
   menubar?: Tray;
@@ -54,6 +55,7 @@ export class TrayManager {
           recorder.resumeRecording();
         },
       },
+      { type: "separator" },
       {
         label: "Retake Recording ",
         click: async () => {
@@ -80,9 +82,6 @@ export class TrayManager {
           this.menubar?.setToolTip("Lapse | timelapse screen recorder");
           recorder.stopRecording();
         },
-      },
-      {
-        role: "quit",
       },
     ];
     return Menu.buildFromTemplate(contextmenu);
@@ -236,7 +235,7 @@ export class TrayManager {
             alwaysOnTop: true,
             transparent: true,
             frame: false,
-            skipTaskbar:true,
+            skipTaskbar: true,
           });
           // Load a blank HTML page
           const url = is.development
@@ -246,7 +245,7 @@ export class TrayManager {
                 protocol: "file:",
                 slashes: true,
               });
-        dialogWindow.setSkipTaskbar(false);
+          dialogWindow.setSkipTaskbar(false);
 
           dialogWindow?.loadURL(url);
           // When the window is ready, show the dialog
@@ -439,10 +438,10 @@ export class TrayManager {
             break;
         }
       } catch (error) {
-        console.error("Error handling tray click:", error);
+        log.error("Error handling tray click:", error);
       }
     });
-    console.log("==> Tray", "tray initialized");
+    log.info("==> Tray", "tray initialized");
   };
 }
 

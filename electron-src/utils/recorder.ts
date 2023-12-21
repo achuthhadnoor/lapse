@@ -9,7 +9,7 @@ import {
 import { track, cleanupSync, mkdir } from "temp";
 import { join } from "path";
 import { platform } from "os";
-import { writeFileSync } from "fs";
+import { writeFileSync, existsSync } from "fs";
 import { format } from "url";
 import { fixPathForAsarUnpack, is } from "electron-util";
 import ffmpeg from "fluent-ffmpeg";
@@ -18,18 +18,18 @@ import showNotification from "../notify";
 import { RECORDER_STATE } from "./constants";
 import { tray } from "./tray";
 import { windowManager } from "../windows/windowManager";
+import log from "./logger";
 
-// const { getWindows, activateWindow } = require("mac-windows");
+const { getWindows, activateWindow } = require("mac-windows");
 
 export class ScreenRecorder {
-  defaultSettings?: any;
-  screenshotInterval?: any;
+  defaultSettings: any;
+  screenshotInterval: any;
   recorderSettings: any;
-  sourcesWindow: BrowserWindow | any;
+  sourcesWindow: BrowserWindow | null;
+
   constructor() {
-    // Initialize temporary directories
     track();
-    // Set ffmpeg path
     ffmpeg.setFfmpegPath(fixPathForAsarUnpack(ffmpegPath));
     this.defaultSettings = {
       frameCount: 0,
@@ -42,7 +42,7 @@ export class ScreenRecorder {
     };
 
     this.screenshotInterval = null;
-    // this.sourcesWindow = null;
+    this.sourcesWindow = null;
     this.recorderSettings = { ...this.defaultSettings };
   }
 
@@ -50,25 +50,36 @@ export class ScreenRecorder {
     return this.recorderSettings.recordState;
   }
 
+  isRecording() {
+    if (this.recorderSettings.recordState !== RECORDER_STATE.idle) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   initVariables() {
-    // Clear the screenshot interval if it's active
-    this.screenshotInterval && clearInterval(this.screenshotInterval);
-    // Clean up temporary directories
+    this.clearScreenshotInterval();
     cleanupSync();
-    // Reset recorder settings to default
     this.recorderSettings = {
-      ...this.recorderSettings,
+      ...this.defaultSettings,
       recordState: RECORDER_STATE.idle,
       frameCount: 0,
       sourceId: "0",
       interval: undefined,
     };
-
-    // Set the tray menu to the idle state
     tray.setIdleTrayMenu();
   }
 
-  createScreenshotInterval(sourceId: any) {
+  clearScreenshotInterval() {
+    if (this.screenshotInterval) {
+      clearInterval(this.screenshotInterval);
+      this.screenshotInterval = null;
+    }
+  }
+
+  async createScreenshotInterval(sourceId: any) {
+    this.clearScreenshotInterval();
     this.screenshotInterval = setInterval(async () => {
       try {
         const sources = await desktopCapturer.getSources({
@@ -76,7 +87,7 @@ export class ScreenRecorder {
           thumbnailSize: screen.getPrimaryDisplay().bounds,
         });
 
-        const source = sources.find((source) => source.id === sourceId);
+        const source = sources.find((s) => s.id === sourceId);
 
         if (source) {
           const imgBuffer = Buffer.from(
@@ -90,17 +101,7 @@ export class ScreenRecorder {
           console.log(filePath);
           writeFileSync(filePath, imgBuffer);
         } else {
-          if (this.getRecordingState() === RECORDER_STATE.paused) {
-            this.pauseRecording();
-            tray.setPausedTrayMenu();
-            return;
-          } else {
-            // Handle the case when the source is not found
-            app.lapse.recordings.push(this.recorderSettings.imagesDir);
-            this.initVariables();
-            console.log(source, "Error while processing! The recording.");
-            // stopRecording();
-          }
+          this.handleRecordingError("Error while processing the recording.");
         }
       } catch (error) {
         console.error("Error during screenshot interval:", error);
@@ -114,7 +115,6 @@ export class ScreenRecorder {
 
     const command = ffmpeg();
     const { framerate, quality } = app.lapse.settings;
-
     const qualities: any = {
       auto: 25,
       "8k": 6,
@@ -127,6 +127,7 @@ export class ScreenRecorder {
       "144p": 48,
     };
     tray.setTrayTitle(`0%`);
+
     try {
       command
         .input(this.recorderSettings.ffmpegImgPattern)
@@ -151,92 +152,111 @@ export class ScreenRecorder {
         ])
         .output(outputPath)
         .on("end", () => {
-          console.log("Complete! Click to open the video ");
+          log.info("Complete! Click to open the video ");
           this.initVariables();
-          showNotification("Complete! Click to open the video", () => {
+          showNotification("Complete! The video is saved to disk", () => {
             shell.openPath(outputPath);
           });
         })
         .on("error", (err) => {
-          console.error(`An error occurred: ${err.message}`);
-          showNotification(`An error occurred: ${err.message}`);
-          // TODO: Save the path to make a video later
-          this.initVariables();
+          this.handleRecordingError(`An error occurred: ${err.message}`);
         })
-        .on("progress", (process) => {
-          console.log("====================================");
-          console.log(`progress  =>>>>>>>>> ${process?.percent?.toFixed(2)}`);
-          console.log("====================================");
-          if (process) {
-            process?.percent &&
-              tray.setTrayTitle(` ${process?.percent?.toFixed(2)}% `);
-          }
+        .on("progress", (progress) => {
+          this.handleRecordingProgress(progress);
         })
         .on("stderr", (progress) => {
-          const progressMatch = progress
-            .toString()
-            .match(/time=(\d+:\d+:\d+\.\d+)/);
-
-          if (progressMatch) {
-            const numberOfImages = this.recorderSettings.frameCount;
-            const videoDurationInSeconds = numberOfImages / framerate;
-            const timeString = progressMatch[1];
-            const [hours, minutes, seconds] = timeString
-              .split(":")
-              .map(parseFloat);
-            const totalTimeInSeconds = hours * 3600 + minutes * 60 + seconds;
-            const progressPercentage =
-              (totalTimeInSeconds / videoDurationInSeconds) * 100;
-            console.log(`Progress: ${progressPercentage.toFixed(2)}%`);
-            progressPercentage &&
-              tray.setTrayTitle(`${progressPercentage.toFixed(2)}%`);
-          }
+          this.handleRecordingProgress(progress, true);
         })
         .on("close", (code) => {
           if (code === 0) {
             console.log("Video rendering completed successfully!");
-            // Do something when rendering is complete
           } else {
             console.error(`Video rendering failed with code ${code}`);
-            // Handle the error
           }
         })
         .run();
     } catch (err: any) {
-      console.error(`An unexpected error occurred: ${err.message}`);
-      showNotification(`An unexpected error occurred: ${err.message}`);
-      this.initVariables();
+      this.handleRecordingError(`An unexpected error occurred: ${err.message}`);
     }
   }
 
   stopRecording() {
-    let filePath = null;
-
     try {
-      // Clear the screenshot interval
-      this.screenshotInterval && clearInterval(this.screenshotInterval);
-
-      // Set the recording state to rendering
+      this.clearScreenshotInterval();
       this.recorderSettings.recordState = RECORDER_STATE.rendering;
       tray.setRenderingTrayMenu();
       if (app.lapse.settings.askSavePath) {
         windowManager.save?.open();
       } else {
-        filePath = app.lapse.settings.savePath;
-        this.prepareVideo(
-          `${filePath}/lapse-${Date.now()}.${app.lapse.settings.format}`
-        );
+        const outputPath = this.getVideoOutputPath();
+        this.prepareVideo(outputPath);
       }
     } catch (err: any) {
       console.error(`An unexpected error occurred: ${err.message}`);
-      // Handle the error as needed
     }
   }
 
+  handleRecordingError(errorMessage: string) {
+    console.error(errorMessage);
+    showNotification(errorMessage);
+    this.initVariables();
+  }
+
+  handleRecordingProgress(progress: any, stderr = false) {
+    if (progress && progress?.percent) {
+      tray.setTrayTitle(` ${progress?.percent?.toFixed(2)}% `);
+    }
+
+    if (stderr) {
+      const progressMatch = progress
+        .toString()
+        .match(/time=(\d+:\d+:\d+\.\d+)/);
+
+      if (progressMatch) {
+        const numberOfImages = this.recorderSettings.frameCount;
+        const videoDurationInSeconds =
+          numberOfImages / app.lapse.settings.framerate;
+        const timeString = progressMatch[1];
+        const [hours, minutes, seconds] = timeString.split(":").map(parseFloat);
+        const totalTimeInSeconds = hours * 3600 + minutes * 60 + seconds;
+        const progressPercentage = Math.floor(
+          (totalTimeInSeconds / videoDurationInSeconds) * 100
+        );
+
+        console.log(`Progress: ${progressPercentage}%`);
+        progressPercentage && tray.setTrayTitle(`${progressPercentage}%`);
+      }
+    }
+  }
+
+  getVideoOutputPath() {
+    const filePath = join(
+      app.lapse.settings.savePath,
+      `lapse-${Date.now()}.${app.lapse.settings.format}`
+    );
+
+    if (existsSync(filePath)) {
+      return this.getUniqueFilePath(filePath);
+    }
+
+    return filePath;
+  }
+
+  getUniqueFilePath(filePath: string, count = 1): any {
+    const [name, ext] = filePath.split(".");
+    const numberedFilePath = `${name}-${count}.${ext}`;
+
+    if (existsSync(numberedFilePath)) {
+      return this.getUniqueFilePath(filePath, count + 1);
+    }
+
+    return numberedFilePath;
+  }
+
   pauseRecording = () => {
-    // Send a notification saying recording paused
     this.recorderSettings.recordState = RECORDER_STATE.paused;
-    this.screenshotInterval && clearInterval(this.screenshotInterval);
+    this.clearScreenshotInterval();
+    tray.setPausedTrayMenu();
   };
 
   resumeRecording = () => {
@@ -245,24 +265,18 @@ export class ScreenRecorder {
   };
 
   async selectSource() {
-    /*
-      This function pops up a window to select the screen/app to record.
-      Give an option for the user to select the screens that can be added to the hide list from the next time.
-    */
-    let selectedSourceId: string = "0";
-    let closeWindowMessage = false;
+    try {
+      let selectedSourceId: string = "0";
+      let closeWindowMessage = false;
 
-    // Get all the available sources and their metadata
-    const sources = await desktopCapturer.getSources({
-      types: ["window", "screen"],
-      thumbnailSize: screen.getPrimaryDisplay().bounds,
-    });
+      const sources = await desktopCapturer.getSources({
+        types: ["window", "screen"],
+        thumbnailSize: screen.getPrimaryDisplay().bounds,
+      });
 
-    // By default, set the entire screen as the default source
-    selectedSourceId = sources[0].id;
+      selectedSourceId = sources[0].id;
 
-    return new Promise(async (resolve, reject) => {
-      try {
+      return new Promise(async (resolve) => {
         this.sourcesWindow = new BrowserWindow({
           height: 600,
           width: 500,
@@ -270,9 +284,9 @@ export class ScreenRecorder {
           resizable: false,
           frame: false,
           alwaysOnTop: true,
-          transparent: platform() === "darwin" ? true : false,
+          transparent: platform() === "darwin",
           vibrancy: "sidebar",
-          skipTaskbar:true,
+          skipTaskbar: true,
           hiddenInMissionControl: true,
           webPreferences: {
             nodeIntegration: true,
@@ -280,7 +294,9 @@ export class ScreenRecorder {
             preload: join(__dirname, "../preload.js"),
           },
         });
+
         this.sourcesWindow.setSkipTaskbar(false);
+
         const url = is.development
           ? "http://localhost:8000/screens"
           : format({
@@ -289,25 +305,21 @@ export class ScreenRecorder {
               slashes: true,
             });
 
-        this.sourcesWindow?.loadURL(url);
+        this.sourcesWindow.loadURL(url);
 
         is.development &&
-          this.sourcesWindow?.webContents.openDevTools({ mode: "detach" });
+          this.sourcesWindow.webContents.openDevTools({ mode: "detach" });
+
         const selectScreen = (_e: any, args: any) => {
-          // Check if the window still exists before interacting with it
-          if (!this.sourcesWindow || this.sourcesWindow?.isDestroyed()) {
+          if (!this.sourcesWindow || this.sourcesWindow.isDestroyed()) {
             return;
           }
-
-          // activateWindow(args.ownerName);
+          activateWindow(args.ownerName);
           selectedSourceId = args.id;
-
-          // Close the window once the source is selected
-          this.sourcesWindow?.close();
+          this.sourcesWindow.close();
         };
 
         const closeScreen = (_e: any, _args: any) => {
-          // Check if the window still exists before interacting with it
           if (!this.sourcesWindow || this.sourcesWindow.isDestroyed()) {
             return;
           }
@@ -316,13 +328,12 @@ export class ScreenRecorder {
           closeWindowMessage = true;
         };
 
-        this.sourcesWindow?.webContents.on("did-finish-load", () => {
+        this.sourcesWindow.webContents.on("did-finish-load", () => {
           ipcMain.once("selected-screen", selectScreen);
           ipcMain.once("close-screen", closeScreen);
         });
 
-        this.sourcesWindow?.on("closed", () => {
-          // Remove event listeners when the window is closed
+        this.sourcesWindow.on("closed", () => {
           ipcMain.removeListener("selected-screen", selectScreen);
           ipcMain.removeListener("close-screen", closeScreen);
 
@@ -332,22 +343,19 @@ export class ScreenRecorder {
             resolve(selectedSourceId);
           }
         });
-      } catch (error) {
-        reject(`error: ${error}`);
-      }
-    });
+      });
+    } catch (error) {
+      console.error(`Error selecting source: ${error}`);
+      throw error;
+    }
   }
 
-  startRecording = async () => {
-    // Clear the interval if the recording is not happening
-    this.screenshotInterval && clearInterval(this.screenshotInterval);
-
-    // We resolve this promise if recording started or we tell the user if it fails
+  async startRecording() {
+    this.clearScreenshotInterval();
     this.recorderSettings.sourceId = await this.selectSource();
     this.recorderSettings.frameCount = 0;
 
     if (this.recorderSettings.sourceId) {
-      // Add custom images save location
       const d = new Date();
       mkdir(
         {
@@ -365,52 +373,52 @@ export class ScreenRecorder {
         }
       );
 
-      // Set recording state to 'recording'
       this.recorderSettings.recordState = RECORDER_STATE.recording;
 
-      // Check if countdown is enabled
       if (app.lapse.settings.countdown) {
         windowManager.timer?.open();
       } else {
         this.createScreenshotInterval(this.recorderSettings.sourceId);
       }
     }
-  };
+  }
 }
-// IPC handler to get sources
+
 ipcMain.handle("get-sources", async () => {
-  const sources = await desktopCapturer.getSources({
-    types: ["window", "screen"],
-    thumbnailSize: screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
-      .bounds,
-  });
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["window", "screen"],
+      thumbnailSize: screen.getDisplayNearestPoint(
+        screen.getCursorScreenPoint()
+      ).bounds,
+    });
+    const windows = await getWindows();
 
-  // const windows = await getWindows();
-  const srcs = sources.map((src) => {
-    // const currentWin = windows.find(
-    //   (win: {
-    //     pid: number;
-    //     ownerName: string;
-    //     name: string;
-    //     width: number;
-    //     height: number;
-    //     x: number;
-    //     y: number;
-    //     number: number;
-    //   }) =>
-    //     win.name === src.name ||
-    //     (win.name === "Dock" && src.name === "Entire Screen")
-    // );
-
-    return {
-      // ...currentWin,
+    const srcs = sources.map((src) => ({
+      ...windows.find(
+        (win: {
+          pid: number;
+          ownerName: string;
+          name: string;
+          width: number;
+          height: number;
+          x: number;
+          y: number;
+          number: number;
+        }) =>
+          win.name === src.name ||
+          (win.name === "Dock" && src.name === "Entire Screen")
+      ),
       ...src,
       thumbnail: src.thumbnail.toDataURL(),
       appIcon: src.appIcon !== null && src.appIcon.toDataURL(),
-    };
-  });
+    }));
 
-  return JSON.stringify(srcs);
+    return JSON.stringify(srcs);
+  } catch (error) {
+    console.error(`Error getting sources: ${error}`);
+    throw error;
+  }
 });
 
 export const recorder = new ScreenRecorder();

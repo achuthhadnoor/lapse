@@ -1,6 +1,7 @@
 import { shell, dialog, app, systemPreferences } from "electron";
 import { is, openSystemPreferences } from "electron-util";
 import { ensureDockIsShowing } from "./dock";
+import log from "./logger";
 
 let isDialogShowing = false;
 
@@ -44,7 +45,7 @@ const promptSystemPreferences =
   };
 
 // Screen Capture (10.15 and newer)
-const screenCaptureFallback = promptSystemPreferences({
+export const screenCaptureFallback = promptSystemPreferences({
   message: "Lapse cannot record the screen.",
   detail:
     "Lapse requires screen capture access to be able to record the screen. You can grant this in the System Preferences. Afterwards, launch Lapse for the changes to take effect.",
@@ -52,28 +53,45 @@ const screenCaptureFallback = promptSystemPreferences({
   systemPreferencesPath: "Privacy_ScreenCapture",
 });
 
-export const ensureScreenCapturePermissions = (
-  fallback = screenCaptureFallback
-) => {
-  if (is.macos) {
-    console.log(
-      "==> permissions",
-      systemPreferences.getMediaAccessStatus("screen")
-    );
-    const hasAccess =
-      systemPreferences.getMediaAccessStatus("screen") === "granted"
-        ? true
-        : false;
+export const ensureScreenCapturePermissions = async () =>
+  // fallback = screenCaptureFallback
+  {
+    if (is.macos) {
+      console.log(
+        "==> permissions",
+        systemPreferences.getMediaAccessStatus("screen")
+      );
+      const hasAccess =
+        systemPreferences.getMediaAccessStatus("screen") === "granted"
+          ? true
+          : false;
 
-    if (hasAccess) {
+      if (hasAccess) {
+        return true;
+      }
+      // fallback();
+      await dialog.showMessageBox({
+        type: "Error",
+        buttons: ["Quit Lapse"],
+        defaultId: 0,
+        message: "Screen Recording Permission Required for Lapse",
+        detail: `To enable screen recording, please grant permission in your system settings.
+
+       Open 'System Preferences' on your Mac.
+       Navigate to 'Security & Privacy.'
+       Select the 'Privacy' tab.
+       In the left sidebar, click on 'Screen and system audio Recording.'
+       Check the box next to the application that requires screen recording.
+       After granting permission, restart the application.
+       
+       Thank you for your understanding and cooperation.`,
+        cancelId: 1,
+      });
+      log.info("==> OS", "macOs");
+      return false;
+    } else {
+      log.info("==> OS", "windows or linux");
+
       return true;
     }
-    fallback();
-    console.log("==> OS", "macOs");
-    return false;
-  } else {
-    console.log("==> OS", "windows or linux");
-
-    return true;
-  }
-};
+  };

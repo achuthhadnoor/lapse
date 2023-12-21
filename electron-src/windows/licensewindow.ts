@@ -1,9 +1,10 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 import { join } from "path";
 import { format } from "url";
-import { platform } from "os";
+import { hostname, platform } from "os";
 import { windowManager } from "./windowManager";
 import { is } from "electron-util";
+import log from "../utils/logger";
 
 let window: BrowserWindow | null = null,
   isOpen = false;
@@ -11,16 +12,16 @@ let window: BrowserWindow | null = null,
 const createBrowserWindow = () => {
   close();
   window = new BrowserWindow({
-    width: 300,
-    height: 350,
+    height: 570,
+    width: 400,
     fullscreen: false,
     resizable: false,
     frame: false,
-    alwaysOnTop: true,
     transparent: platform() === "darwin" ? true : false,
     vibrancy: "sidebar",
+    titleBarStyle: "customButtonsOnHover",
+    trafficLightPosition: { x: 16, y: 16 },
     webPreferences: {
-      // devTools: true,
       nodeIntegration: true,
       allowRunningInsecureContent: true,
       preload: join(__dirname, "../preload.js"),
@@ -45,6 +46,11 @@ const close = () => {
 };
 
 const windowOpenCheck = () => isOpen;
+
+ipcMain.handle("get-hostname", (_e, _args) => {
+  log.info(hostname());
+  return hostname();
+});
 
 export default windowManager.setLicenseWindow({
   open: createBrowserWindow,
