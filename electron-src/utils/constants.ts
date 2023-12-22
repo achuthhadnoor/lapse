@@ -38,6 +38,8 @@ export const SETTINGS_DEFAULT = {
   width: "1920",
   displayHideList: [], // ? Contains list of screens/apps to hide while starting to record ; {name,id,imageAsdataURI,byDev}
   askSavePath: false,
+  lapse_recording_count: 0,
+  failed_recordings_count: 0,
 };
 export const INTERVALS = [2, 3, 4, 5];
 export const RECORDER_STATE = {

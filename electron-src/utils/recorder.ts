@@ -19,6 +19,7 @@ import { RECORDER_STATE } from "./constants";
 import { tray } from "./tray";
 import { windowManager } from "../windows/windowManager";
 import log from "./logger";
+import { updateSettings } from "./lib";
 
 const { getWindows, activateWindow } = require("mac-windows");
 
@@ -98,10 +99,13 @@ export class ScreenRecorder {
             this.recorderSettings.imagesDir,
             `lapse${this.recorderSettings.frameCount++}.png`
           );
-          console.log(filePath);
+          log.info("filePath ==>", filePath);
           writeFileSync(filePath, imgBuffer);
         } else {
-          this.handleRecordingError("Error while processing the recording.");
+          this.pauseRecording();
+          showNotification(
+            "Paused! The recording source is not active or closed"
+          );
         }
       } catch (error) {
         console.error("Error during screenshot interval:", error);
@@ -109,9 +113,41 @@ export class ScreenRecorder {
     }, app.lapse.settings.intervals * 1000);
   }
 
+  async handleVideoEnd(outputPath: string) {
+    log.info("Video rendering completed successfully!");
+
+    this.initVariables();
+    showNotification("Complete! The video is saved to disk", () => {
+      shell.openPath(outputPath);
+    });
+
+    const success = app.lapse.settings.lapse_recording_count || 0;
+    await updateSettings({ lapse_recording_count: success + 1 });
+  }
+
+  async handleVideoError(err: { message: any }) {
+    log.error(`An error occurred: ${err.message}`);
+    showNotification(`An error occurred: ${err.message}`);
+
+    const failed = app.lapse.settings.failed_recordings_count || 0;
+    await updateSettings({ failed_recordings_count: failed + 1 });
+  }
+
+  async handleVideoClose(code: number) {
+    if (code === 0) {
+      log.info("Video rendering completed successfully!");
+      const success = app.lapse.settings.lapse_recording_count || 0;
+      await updateSettings({ lapse_recording_count: success + 1 });
+    } else {
+      log.error(`Video rendering failed with code ${code}`);
+      const failed = app.lapse.settings.failed_recordings_count || 0;
+      await updateSettings({ failed_recordings_count: failed + 1 });
+    }
+  }
+
   prepareVideo(outputPath: string) {
     let startTime = Date.now();
-    console.log("Start Time Create Timelapse " + startTime);
+    log.info("Start Time Create Timelapse ==>" + startTime);
 
     const command = ffmpeg();
     const { framerate, quality } = app.lapse.settings;
@@ -129,37 +165,44 @@ export class ScreenRecorder {
     tray.setTrayTitle(`0%`);
 
     try {
+      const commonOptions = [
+        "-c:v libx264",
+        "-preset slow",
+        "-profile:v high",
+        "-vcodec libx264",
+        `-crf ${qualities[quality]}`,
+        "-coder 1",
+        "-pix_fmt yuv420p",
+        "-movflags +faststart",
+        "-g 30",
+        "-bf 2",
+        "-c:a aac",
+        "-b:a 384k",
+        "-b:v 1000k",
+      ];
+
+      const videoOptions = [
+        ...commonOptions,
+        `-r ${framerate}`,
+        `-s ${this.recorderSettings.width}x${this.recorderSettings.height}`,
+        "-vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+      ];
+
       command
         .input(this.recorderSettings.ffmpegImgPattern)
-        .inputOptions(["-y", `-r ${framerate}`, "-f image2", "-start_number 0"])
-        .outputOptions([
-          "-c:v libx264",
-          "-preset slow",
-          "-profile:v high",
-          "-vcodec libx264",
-          `-crf ${qualities[quality]}`,
-          "-coder 1",
-          "-pix_fmt yuv420p",
-          "-movflags +faststart",
-          "-g 30",
-          "-bf 2",
-          "-c:a aac",
-          "-b:a 384k",
-          "-b:v 1000k",
-          `-r ${framerate}`,
-          `-s ${this.recorderSettings.width}x${this.recorderSettings.height}`,
-          "-vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+        .inputOptions([
+          "-y",
+          `-r ${app.lapse.settings.framerate}`,
+          "-f image2",
+          "-start_number 0",
         ])
+        .outputOptions(videoOptions)
         .output(outputPath)
-        .on("end", () => {
-          log.info("Complete! Click to open the video ");
-          this.initVariables();
-          showNotification("Complete! The video is saved to disk", () => {
-            shell.openPath(outputPath);
-          });
+        .on("end", async () => {
+          await this.handleVideoEnd(outputPath);
         })
-        .on("error", (err) => {
-          this.handleRecordingError(`An error occurred: ${err.message}`);
+        .on("error", async (err) => {
+          await this.handleVideoError(err);
         })
         .on("progress", (progress) => {
           this.handleRecordingProgress(progress);
@@ -167,16 +210,16 @@ export class ScreenRecorder {
         .on("stderr", (progress) => {
           this.handleRecordingProgress(progress, true);
         })
-        .on("close", (code) => {
-          if (code === 0) {
-            console.log("Video rendering completed successfully!");
-          } else {
-            console.error(`Video rendering failed with code ${code}`);
-          }
+        .on("close", async (code) => {
+          await this.handleVideoClose(code);
         })
         .run();
     } catch (err: any) {
       this.handleRecordingError(`An unexpected error occurred: ${err.message}`);
+      const failed = app.lapse.settings.failed_recordings_count || 0;
+      updateSettings({
+        failed_recordings_count: failed + 1,
+      });
     }
   }
 
@@ -192,6 +235,10 @@ export class ScreenRecorder {
         this.prepareVideo(outputPath);
       }
     } catch (err: any) {
+      const failed = app.lapse.settings.failed_recordings_count || 0;
+      updateSettings({
+        failed_recordings_count: failed + 1,
+      });
       console.error(`An unexpected error occurred: ${err.message}`);
     }
   }
@@ -204,7 +251,8 @@ export class ScreenRecorder {
 
   handleRecordingProgress(progress: any, stderr = false) {
     if (progress && progress?.percent) {
-      tray.setTrayTitle(` ${progress?.percent?.toFixed(2)}% `);
+      const progressVal = Math.round(progress?.percent || 0);
+      tray.setTrayTitle(` ${progressVal}% `);
     }
 
     if (stderr) {
@@ -223,7 +271,7 @@ export class ScreenRecorder {
           (totalTimeInSeconds / videoDurationInSeconds) * 100
         );
 
-        console.log(`Progress: ${progressPercentage}%`);
+        log.info(`Progress: ${progressPercentage}%`);
         progressPercentage && tray.setTrayTitle(`${progressPercentage}%`);
       }
     }
@@ -254,6 +302,7 @@ export class ScreenRecorder {
   }
 
   pauseRecording = () => {
+    log.info("Paused!");
     this.recorderSettings.recordState = RECORDER_STATE.paused;
     this.clearScreenshotInterval();
     tray.setPausedTrayMenu();
@@ -369,7 +418,7 @@ export class ScreenRecorder {
           }
           this.recorderSettings.ffmpegImgPattern = join(dirPath, "lapse%d.png");
           this.recorderSettings.imagesDir = dirPath;
-          console.log("===> Image directory:", dirPath);
+          log.info("===> Image directory:", dirPath);
         }
       );
 

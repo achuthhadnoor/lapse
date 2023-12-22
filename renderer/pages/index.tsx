@@ -123,16 +123,16 @@ const IndexPage = () => {
     setLoading(true);
     const newArr = [];
 
-    // if (
-    //   licenseKey !== "" &&
-    //   licenseKey.length === 19 &&
-    //   licenseKey.split("-").length === 4
-    // ) {
-    //   setLicenseErr(false);
-    // } else {
-    //   newArr.push("License key is invalid");
-    //   setLicenseErr(true);
-    // }
+    if (
+      licenseKey !== "" //&&
+      //   licenseKey.length === 19 &&
+      //   licenseKey.split("-").length === 4
+    ) {
+      setLicenseErr(false);
+    } else {
+      newArr.push("Enter License key");
+      setLicenseErr(true);
+    }
 
     if (!agree) {
       newArr.push("Accept the license agreement");

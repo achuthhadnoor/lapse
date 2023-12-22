@@ -10,12 +10,10 @@ contextBridge.exposeInMainWorld("electron", {
       name: string,
       handler: (event: Electron.IpcRendererEvent, ...args: any[]) => void
     ) => ipcRenderer.on(name, handler),
-    off: (name: string | symbol, handler: (...args: any[]) => void) =>
+    off: (name: any, handler: (...args: any[]) => void) =>
       ipcRenderer.off(name, handler),
-    addEventListener: (
-      name: string | symbol,
-      handler: (...args: any[]) => void
-    ) => ipcRenderer.addListener(name, handler),
+    addEventListener: (name: any, handler: (...args: any[]) => void) =>
+      ipcRenderer.addListener(name, handler),
     navigate: (link: string) => shell.openExternal(link),
   },
 });

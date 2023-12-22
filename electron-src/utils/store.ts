@@ -1,6 +1,7 @@
 import { app } from "electron";
 import Store from "electron-store";
 import { DEFAULT_STATE } from "./constants";
+import log from "./logger";
 
 export const store = new Store();
 
@@ -20,8 +21,8 @@ export const loadAppData = () => {
   } else {
     store.set("lapse-settings", app.lapse.settings);
   }
-  console.log(
-    "loadAppData",
+  log.info(
+    "loadAppData ==>",
     JSON.stringify(app.lapse.user),
     JSON.stringify(app.lapse.settings)
   );

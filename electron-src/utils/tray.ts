@@ -26,7 +26,7 @@ import {
 
 import { format } from "url";
 import { join } from "path";
-import log from "./logger";
+import log, { openLogFile } from "./logger";
 
 export class TrayManager {
   menubar?: Tray;
@@ -53,6 +53,7 @@ export class TrayManager {
           this.menubar?.setImage(recordIcon);
           this.menubar?.setToolTip("Recording..");
           recorder.resumeRecording();
+          log.info("Resumed!");
         },
       },
       { type: "separator" },
@@ -70,6 +71,7 @@ export class TrayManager {
             cancelId: 1,
           });
           if (response === 0) {
+            log.info("Retake!");
             recorder.initVariables();
             recorder.startRecording();
           }
@@ -296,18 +298,10 @@ export class TrayManager {
         enabled: false,
       },
       {
-        label: "Guide", // keyboard shortcuts and settings
+        label: "Guide: How to...", // keyboard shortcuts and settings
         click: () => {
           shell.openExternal(
             "https://achuth.notion.site/Press-Kit-1a3b994e395d43efbaf6727fed4429f1"
-          );
-        },
-      },
-      {
-        label: "Changelog",
-        click: () => {
-          shell.openExternal(
-            `https://achuth.notion.site/Changelog-4c898f8b4ec140abb1d6a6d2e9108a15`
           );
         },
       },
@@ -318,9 +312,6 @@ export class TrayManager {
             `mailto:hey@achuth.dev?subject=I am looking for information about the app.`
           );
         },
-      },
-      {
-        type: "separator",
       },
       {
         label: "Give a tip!", // Buy me a coffee
@@ -343,6 +334,14 @@ export class TrayManager {
       {
         label: `Version ${app.getVersion()}`,
         enabled: false,
+      },
+      {
+        label: "Changelog",
+        click: () => {
+          shell.openExternal(
+            `https://achuth.notion.site/Changelog-4c898f8b4ec140abb1d6a6d2e9108a15`
+          );
+        },
       },
       {
         // role: "about",
@@ -375,6 +374,12 @@ export class TrayManager {
       {
         type: "separator",
       },
+      { label: "Debug log", enabled: false },
+      {
+        label: "Open log",
+        click: openLogFile,
+      },
+      { type: "separator" },
     ];
     const template: MenuItemConstructorOptions[] = [
       {

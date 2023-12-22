@@ -4,6 +4,8 @@ import { join } from "path";
 import { format } from "url";
 import AutoLaunch from "auto-launch";
 import { store, updateStoreSettings } from "./store";
+import { tray } from "./tray";
+import { recorder } from "./recorder";
 
 export const autoLauncher = new AutoLaunch({
   name: "Lapse",
@@ -18,6 +20,7 @@ export const checkIfAppIsOpen = () => {
   } else {
     app.on("second-instance", () => {
       app.focus();
+      !recorder.isRecording() && tray.setIdleTrayMenu();
     });
   }
 };

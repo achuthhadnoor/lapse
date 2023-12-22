@@ -57,7 +57,8 @@ export const ensureScreenCapturePermissions = async () =>
   // fallback = screenCaptureFallback
   {
     if (is.macos) {
-      console.log(
+      log.info("==> OS", "macOs");
+      log.info(
         "==> permissions",
         systemPreferences.getMediaAccessStatus("screen")
       );
@@ -70,8 +71,8 @@ export const ensureScreenCapturePermissions = async () =>
         return true;
       }
       // fallback();
-      await dialog.showMessageBox({
-        type: "Error",
+      const { response } = await dialog.showMessageBox({
+        type: "error",
         buttons: ["Quit Lapse"],
         defaultId: 0,
         message: "Screen Recording Permission Required for Lapse",
@@ -87,7 +88,9 @@ export const ensureScreenCapturePermissions = async () =>
        Thank you for your understanding and cooperation.`,
         cancelId: 1,
       });
-      log.info("==> OS", "macOs");
+      if (response) {
+        app.quit();
+      }
       return false;
     } else {
       log.info("==> OS", "windows or linux");
