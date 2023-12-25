@@ -99,16 +99,22 @@
       "iconSize": 160,
       "contents": [
         {
-          "x": 180,
-          "y": 170
+          "x": 120,
+          "y": 230
         },
         {
-          "x": 480,
-          "y": 170,
+          "x": 390,
+          "y": 230,
           "type": "link",
           "path": "/Applications"
         }
-      ]
+      ],
+      "window": {
+        "x": 200,
+        "y": 200,
+        "height": 450,
+        "width": 544
+      }
     },
     "nsis": {
       "oneClick": false,
