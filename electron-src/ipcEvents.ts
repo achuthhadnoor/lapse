@@ -69,40 +69,43 @@ export default function init() {
     });
 
     powerMonitor.on("lock-screen", () => {
-      log.info("==> ipcEvents", "lock-screen");
+      recorder.isRecording() && log.info("==> ipcEvents", "lock-screen");
       pauseRecordingNow;
     });
     powerMonitor.on("shutdown", () => {
-      log.info("==> ipcEvents", "shutdown");
+      recorder.isRecording() && log.info("==> ipcEvents", "shutdown");
 
       pauseRecordingNow();
     });
     powerMonitor.on("suspend", () => {
-      log.info("==> ipcEvents", "suspend");
+      recorder.isRecording() && log.info("==> ipcEvents", "suspend");
 
       pauseRecordingNow();
     });
     powerMonitor.on("user-did-resign-active", () => {
-      log.info("==> ipcEvents", "user-did-resign-active");
+      recorder.isRecording() &&
+        log.info("==> ipcEvents", "user-did-resign-active");
 
       pauseRecordingNow();
     });
 
     powerMonitor.on("resume", () => {
-      log.info("==> ipcEvents", "resume");
+      recorder.isRecording() && log.info("==> ipcEvents", "resume");
 
       resumeRecordingNow();
     });
     powerMonitor.on("unlock-screen", () => {
-      log.info("==> ipcEvents", "unlock-screen");
+      recorder.isRecording() && log.info("==> ipcEvents", "unlock-screen");
 
       resumeRecordingNow();
     });
     powerMonitor.on("user-did-become-active", () => {
-      log.info("==> ipcEvents", "user-did-become-active");
+      recorder.isRecording() &&
+        log.info("==> ipcEvents", "user-did-become-active");
       resumeRecordingNow();
     });
-    log.info("==> ipcEvents", "registered ipc events ");
+    recorder.isRecording() &&
+      log.info("==> ipcEvents", "registered ipc events ");
   } catch (error) {
     log.info("==> ipcEvents", error);
   }

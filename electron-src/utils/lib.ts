@@ -40,13 +40,18 @@ export const sendUpdateRequest = (click: boolean) => {
     response.on("end", async () => {
       const data = JSON.parse(body);
       console.log(`Version: ${data.version}`);
-      if (app.getVersion() !== data.version) {
+      if (
+        Number(app.getVersion().split(".").join()) <
+        Number(data.version.split(".").join())
+      ) {
         const { response } = await dialog.showMessageBox({
           type: "info",
           buttons: ["Download Updates", "Cancel"],
           defaultId: 0,
           message: "New Update available",
-          detail: "Click below to download latest version",
+          detail: `You are on ${app.getVersion()}. Latest version ${
+            data.version
+          } is available`,
           cancelId: 1,
         });
         if (response === 0) {
