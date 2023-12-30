@@ -167,7 +167,7 @@ const IndexPage = () => {
         </svg>
       </div>
 
-      {permissions ? (
+      {!isWindows && permissions ? (
         // Render UI for granted permissions
         <form
           className="fixed flex flex-col gap-2 px-6 py-1 dragable inset-0 justify-center my-4"
@@ -185,11 +185,11 @@ const IndexPage = () => {
               className="text-neutral-400 w-full p-1 cursor-pointer"
               onClick={() => {
                 window.electron.ipcRenderer.navigate(
-                  "https://getlapseapp.com/installation"
+                  "https://achuth.notion.site/Press-Kit-1a3b994e395d43efbaf6727fed4429f1"
                 );
               }}
             >
-              https://getlapseapp.com/how-to-install
+              How to install
             </u>
           </div>
           <button
@@ -262,7 +262,7 @@ const IndexPage = () => {
                     className="cursor-pointer"
                     onClick={(e) => {
                       window.electron.ipcRenderer.navigate(
-                        "https://getlapseapp.com/tos"
+                        "https://achuth.notion.site/Terms-of-Service-cf16898198bd42eeb41f4a780f04ac94"
                       );
                     }}
                   >
@@ -329,7 +329,7 @@ const IndexPage = () => {
                 className="cursor-pointer underline text-sm p-2 text-neutral-500"
                 onClick={() => {
                   window.electron.ipcRenderer.navigate(
-                    "https://getlapseapp.com/download"
+                    "https://getlapseapp.com/"
                   );
                 }}
               >

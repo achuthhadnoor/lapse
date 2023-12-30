@@ -5,7 +5,6 @@ import prepareNext from "electron-next";
 import "./windows/load";
 import "./utils/recorder";
 import initializeIPCEvents from "./ipcEvents";
-import { ensureScreenCapturePermissions } from "./utils/permission";
 import { windowManager } from "./windows/windowManager";
 import { autoLauncher, checkIfAppIsOpen, checkUpdates } from "./utils/lib";
 import { loadAppData } from "./utils/store";
@@ -66,10 +65,10 @@ async function setupApp() {
 
   // Check for updates
   // Check for permissions & verify the user to start using the app
-  if (!ensureScreenCapturePermissions()) {
-    log.info("==> permissions : no permissions found");
-    return;
-  }
+  // if (!ensureScreenCapturePermissions()) {
+  //   log.info("==> permissions : no permissions found");
+  //   return;
+  // }
 
   // Perform additional setup if the user is verified
   if (app.lapse.user.isVerified) {
