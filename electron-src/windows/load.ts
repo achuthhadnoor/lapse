@@ -1,4 +1,5 @@
 import "./licensewindow";
 import "./recorderWindow";
 import "./screensWindow";
-// import "./settingsWindow";
+import "./saveWindow";
+import "./timerWindow";

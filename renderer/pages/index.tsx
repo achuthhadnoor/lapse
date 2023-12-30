@@ -15,7 +15,7 @@ const IndexPage = () => {
   const [agree, setAgree] = useState(false);
   const [data, setData] = useState(true);
   const [errors, setErrors] = useState([]);
-  const [isWindows, setIsWindows] = useState(false);
+  const [isWindows, setIsWindows] = useState(true);
   const [permissions, setPermissions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [licenceDetails, setLicenseDetails] = useState({
@@ -29,7 +29,7 @@ const IndexPage = () => {
 
   useEffect(() => {
     if (window) {
-      setIsWindows(window.electron.ipcRenderer.platform() !== "darwin");
+      // setIsWindows(window.electron.ipcRenderer.platform() !== "darwin");
     }
   }, []);
 
@@ -112,11 +112,6 @@ const IndexPage = () => {
   const handleAlert = (message) => {
     alert(message);
   };
-  useEffect(() => {
-    if (window) {
-      setIsWindows(window.electron.ipcRenderer.platform() !== "darwin");
-    }
-  });
 
   const validateActivation = (e) => {
     e.preventDefault();
@@ -124,13 +119,13 @@ const IndexPage = () => {
     const newArr = [];
 
     if (
-      licenseKey !== "" &&
-      licenseKey.length === 19 &&
-      licenseKey.split("-").length === 4
+      licenseKey !== "" //&&
+      //   licenseKey.length === 19 &&
+      //   licenseKey.split("-").length === 4
     ) {
       setLicenseErr(false);
     } else {
-      newArr.push("License key is invalid");
+      newArr.push("Enter License key");
       setLicenseErr(true);
     }
 
@@ -170,7 +165,10 @@ const IndexPage = () => {
       {permissions ? (
         // Render UI for granted permissions
         <form
-          className="fixed flex flex-col gap-2 px-6 py-1 dragable inset-0 justify-center my-4"
+          className={cl(
+            isWindows && "bg-neutral-200 dark:bg-[#222]",
+            "fixed flex flex-col gap-2 px-6 py-1 dragable inset-0 justify-center my-4"
+          )}
           onSubmit={grantedPermissions}
         >
           <div className="flex flex-col flex-1 items-center h-full justify-center gap-4">
@@ -185,11 +183,11 @@ const IndexPage = () => {
               className="text-neutral-400 w-full p-1 cursor-pointer"
               onClick={() => {
                 window.electron.ipcRenderer.navigate(
-                  "https://getlapseapp.com/installation"
+                  "https://achuth.notion.site/Press-Kit-1a3b994e395d43efbaf6727fed4429f1"
                 );
               }}
             >
-              https://getlapseapp.com/how-to-install
+              How to install
             </u>
           </div>
           <button
@@ -202,7 +200,10 @@ const IndexPage = () => {
       ) : (
         // Render UI for license activation
         <form
-          className="fixed flex flex-col justify-between px-6 py-1 dragable inset-0 "
+          className={cl(
+            isWindows && "bg-neutral-200 dark:bg-[#222]",
+            "fixed flex flex-col justify-between px-6 py-1 dragable inset-0 "
+          )}
           onSubmit={validateActivation}
         >
           {/* Content for license activation */}
@@ -225,25 +226,27 @@ const IndexPage = () => {
               id="license_input"
               value={licenseKey}
               onChange={(e: any) => {
-                const inputValue = e.target.value;
-                if (
-                  inputValue.split("-").length === 4 &&
-                  inputValue.length === 18
-                ) {
-                  setLicenseKey(e.target.value);
-                } else {
-                  const sanitizedValue = inputValue.replace(
-                    /[^A-Za-z0-9]/g,
-                    ""
-                  );
-                  const formattedValue = sanitizedValue
-                    .replace(/(.{4})/g, "$1-")
-                    .slice(0, 19);
-                  setLicenseKey(formattedValue);
-                }
+                // const inputValue = e.target.value;
+                setLicenseKey(e.target.value);
+
+                // if (
+                //   inputValue.split("-").length === 4 &&
+                //   inputValue.length === 18
+                // ) {
+                //   setLicenseKey(e.target.value);
+                // } else {
+                //   const sanitizedValue = inputValue.replace(
+                //     /[^A-Za-z0-9]/g,
+                //     ""
+                //   );
+                //   const formattedValue = sanitizedValue
+                //     .replace(/(.{4})/g, "$1-")
+                //     .slice(0, 19);
+                //   setLicenseKey(formattedValue);
+                // }
               }}
             />
-            <div className="flex flex-col py-[10px] align-baseline justify-start gap-[14px] text-neutral-500">
+            <div className="flex flex-col py-[10px] align-baseline justify-start gap-[14px] text-neutral-500 no-drag">
               <label className="flex align-middle items-center gap-1  text-sm">
                 <input
                   type="checkbox"
@@ -260,7 +263,7 @@ const IndexPage = () => {
                     className="cursor-pointer"
                     onClick={(e) => {
                       window.electron.ipcRenderer.navigate(
-                        "https://getlapseapp.com/tos"
+                        "https://achuth.notion.site/Terms-of-Service-cf16898198bd42eeb41f4a780f04ac94"
                       );
                     }}
                   >
@@ -284,7 +287,7 @@ const IndexPage = () => {
                 </span>
               </label>
             </div>
-            <div className="flex flex-row flex-wrap flex-1 space-x-4 p-2">
+            <div className="flex flex-row flex-wrap flex-1 gap-2 p-2">
               {errors.map((error) => (
                 <span
                   className="text-8px text-sm text-red-500"

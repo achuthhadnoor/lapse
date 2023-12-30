@@ -64,7 +64,7 @@ export default function Screens() {
   return (
     <>
       {loading ? (
-        <div className="flex justify-center w-full mt-10">
+        <div className="flex justify-center h-screen items-center w-full">
           <svg
             className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
             xmlns="http://www.w3.org/2000/svg"
@@ -85,6 +85,7 @@ export default function Screens() {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
+          <span className="text-neutral-400">Fetching your screens..</span>
         </div>
       ) : (
         <div className="flex flex-col dragable text-neutral-800 dark:text-neutral-100 h-screen pb-5">
@@ -177,8 +178,9 @@ export default function Screens() {
           {/* ... (your commented-out options section) ... */}
 
           <button
-            className="bg-green-800 mx-10 my-2 rounded p-2 text-neutral-50"
+            className="bg-green-800 mx-10 my-2 rounded p-2 text-neutral-50 disabled:bg-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed"
             onClick={startRecording}
+            disabled={source === null}
           >
             Record
           </button>

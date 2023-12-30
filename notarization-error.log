@@ -1,0 +1,10 @@
+Failed to upload app to Apple's notarization servers
+
+2023-12-25 22:28:29.056 *** Error: Notarization failed for '/var/folders/jh/n9xr2y113_zdh5p7y4c38kz00000gn/T/electron-notarize-INkT9T/Lapse.zip'.
+2023-12-25 22:28:29.058 *** Error: Unable to upload your app for notarization. Failed to get authorization for username 'achuth.hadnoor@icloud.com' and password. (
+    "Error Domain=NSCocoaErrorDomain Code=0 \"Status code: 0\" UserInfo={NSLocalizedDescription=Status code: 0, NSLocalizedFailureReason=The auth server returned a bad status code.}"
+) (-1011)
+ {
+    NSLocalizedDescription = "Unable to upload your app for notarization.";
+    NSLocalizedFailureReason = "Failed to get authorization for username 'achuth.hadnoor@icloud.com' and password. (\n    \"Error Domain=NSCocoaErrorDomain Code=0 \\\"Status code: 0\\\" UserInfo={NSLocalizedDescription=Status code: 0, NSLocalizedFailureReason=The auth server returned a bad status code.}\"\n)";
+}

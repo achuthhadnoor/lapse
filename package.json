@@ -1,24 +1,20 @@
 {
   "name": "lapse",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "private": true,
   "main": "main/index.js",
   "productName": "Lapse",
   "description": "A minimal time-lapse screen recording tool for mac and windows",
-  "author": {
-    "name": "Achuth Hadnoor",
-    "email": "hey@achuth.dev",
-    "url": "https://achuth.dev"
-  },
+  "author": "Achuth Hadnoor <hey@achuth.dev> (https://achuth.dev)",
   "scripts": {
     "start": "next build renderer && next start renderer",
     "clean": "rimraf dist main renderer/out renderer/.next",
     "dev": "npm run build-electron && electron .",
-    "build-renderer": "next build renderer && next export renderer",
+    "build-renderer": "next build renderer",
     "build-electron": "tsc -p electron-src",
     "build": "npm run build-renderer && npm run build-electron",
     "pack-app": "npm run build && electron-builder --dir",
-    "dist": "rm -rf dist && npm run build && electron-builder",
+    "dist": "npm run build && electron-builder",
     "type-check": "tsc -p ./renderer/tsconfig.json && tsc -p ./electron-src/tsconfig.json"
   },
   "dependencies": {
@@ -44,10 +40,10 @@
     "@types/react-dom": "^16.9.9",
     "@types/temp": "^0.9.1",
     "autoprefixer": "^10.4.13",
-    "electron": "^13",
+    "electron": "^28.1.0",
     "electron-builder": "^23.0.3",
-    "electron-builder-notarize": "^1.4.0",
-    "next": "^12",
+    "electron-builder-notarize": "^1.5.1",
+    "next": "^14.0.4",
     "postcss": "^8.4.21",
     "rimraf": "^3.0.0",
     "tailwindcss": "^3.2.4",
@@ -55,12 +51,9 @@
   },
   "build": {
     "appId": "com.achuth.lapse",
-    "afterSign": "electron-builder-notarize",
-    "protocols": {
-      "name": "lapse",
-      "schemes": [
-        "lapse"
-      ]
+    "productName": "Lapse",
+    "directories": {
+      "output": "dist"
     },
     "files": [
       "main",
@@ -69,48 +62,67 @@
       "renderer/out"
     ],
     "mac": {
-      "electronUpdaterCompatibility": ">=2.16",
       "category": "public.app-category.productivity",
       "minimumSystemVersion": "10.12.0",
-      "darkModeSupport": true,
-      "hardenedRuntime": true,
-      "extendInfo": {
-        "NSUserNotificationAlertStyle": "alert",
-        "CFBundleDocumentTypes": [
-          {
-            "CFBundleTypeName": "Video",
-            "CFBundleTypeRole": "Viewer",
-            "LSHandlerRank": "Alternate",
-            "LSItemContentTypes": [
-              "public.mpeg-4",
-              "com.apple.quicktime-movie"
-            ]
-          }
-        ]
-      },
       "target": {
         "target": "default",
         "arch": [
+          "universal",
           "x64",
           "arm64"
         ]
-      }
+      },
+      "icon": "build/icons/icon.icns",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "gatekeeperAssess": false,
+      "type": "distribution"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icons/lapse.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm",
+        "tar.gz"
+      ]
     },
     "dmg": {
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "iconSize": 160,
       "contents": [
         {
-          "x": 180,
-          "y": 170
+          "x": 120,
+          "y": 230
         },
         {
-          "x": 480,
-          "y": 170,
+          "x": 390,
+          "y": 230,
           "type": "link",
           "path": "/Applications"
         }
-      ]
-    }
+      ],
+      "window": {
+        "x": 200,
+        "y": 200,
+        "height": 450,
+        "width": 544
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "afterSign": "electron-builder-notarize"
   }
 }

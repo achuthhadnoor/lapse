@@ -28,12 +28,19 @@ export interface screensWindowManager {
   close: () => void;
   isOpen: () => boolean;
 }
+export interface timerWindowManager {
+  open: () => void;
+  close: () => void;
+  isOpen: () => boolean;
+}
 
 export class WindowManager {
   license?: licenseWindowManager;
   recorder?: recorderWindowManager;
   settings?: settingsWindowManager;
   screens?: screensWindowManager;
+  save?: screensWindowManager;
+  timer?: timerWindowManager;
 
   closeAll = () => {
     this.license?.close();
@@ -50,8 +57,11 @@ export class WindowManager {
   setSettingsWindow = (settingsManager: settingsWindowManager) => {
     this.settings = settingsManager;
   };
-  setScreensWindow = (screensManager: screensWindowManager) => {
-    this.screens = screensManager;
+  setScreensWindow = (timerManager: timerWindowManager) => {
+    this.timer = timerManager;
+  };
+  setSaveWindow = (saveManager: settingsWindowManager) => {
+    this.save = saveManager;
   };
 }
 

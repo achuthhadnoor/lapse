@@ -1,13 +1,9 @@
 import { app, ipcMain, powerMonitor, net } from "electron";
 import { store } from "./utils/store";
-import { initializeTray, setPausedTray, setRecordingTray } from "./utils/tray";
 import { windowManager } from "./windows/windowManager";
-import {
-  getRecordingState,
-  pauseRecording,
-  resumeRecording,
-} from "./utils/recorder";
-import { RECORDER_STATE } from "./utils/constants";
+import { recorder } from "./utils/recorder";
+import { tray } from "./utils/tray";
+import log from "./utils/logger";
 
 const API_URL = "https://getlapseapp.com/api/verify";
 
@@ -29,7 +25,7 @@ export const makeApiRequest = (email: any, license: any) => {
     });
     response.on("end", () => {
       const data = JSON.parse(body);
-      console.log(data);
+      log.info(data);
     });
   });
 
@@ -38,48 +34,79 @@ export const makeApiRequest = (email: any, license: any) => {
 };
 
 const pauseRecordingNow = () => {
-  if (getRecordingState() === RECORDER_STATE.recording) {
-    pauseRecording();
-    setPausedTray();
+  if (recorder.isRecording()) {
+    recorder.pauseRecording();
+    tray.setPausedTrayMenu();
   }
 };
 
 const resumeRecordingNow = () => {
-  if (getRecordingState() === RECORDER_STATE.paused) {
-    resumeRecording();
-    setRecordingTray();
+  if (recorder.isRecording()) {
+    recorder.resumeRecording();
+    tray.setRecordingTrayMenu();
   }
 };
 
-const handlePowerEvent = (event: any) => {
-  console.log(event);
-  pauseRecordingNow();
-};
-
 export default function init() {
-  ipcMain.on("verified", (event, { id, code, name }) => {
-    event.returnValue = "Verified";
-    const user = {
-      id,
-      code,
-      name,
-      isVerified: true,
-    };
-    app.lapse.user = user;
-    store.set("lapse-user", app.lapse.user);
-    windowManager.license?.close();
-    initializeTray();
-  });
+  try {
+    ipcMain.on("verified", (event, { id, email, code, name }) => {
+      event.returnValue = "Verified";
+      let user = {
+        id,
+        email,
+        code,
+        name,
+        isVerified: true,
+      };
+      app.lapse.user = user;
+      store.set("lapse-user", app.lapse.user);
+      windowManager.license?.close();
+      tray.initializeTray();
+    });
 
-  ipcMain.on("quit-app", () => {
-    app.quit();
-  });
+    ipcMain.on("quit-app", () => {
+      app.quit();
+    });
 
-  powerMonitor.on("lock-screen", handlePowerEvent);
-  powerMonitor.on("shutdown", handlePowerEvent);
-  powerMonitor.on("suspend", handlePowerEvent);
-  powerMonitor.on("user-did-resign-active", handlePowerEvent);
-  powerMonitor.on("resume", resumeRecordingNow);
-  powerMonitor.on("unlock-screen", resumeRecordingNow);
-  powerMonitor.on("user-did-become-active", resumeRecordingNow);
+    powerMonitor.on("lock-screen", () => {
+      recorder.isRecording() && log.info("==> ipcEvents", "lock-screen");
+      pauseRecordingNow;
+    });
+    powerMonitor.on("shutdown", () => {
+      recorder.isRecording() && log.info("==> ipcEvents", "shutdown");
+
+      pauseRecordingNow();
+    });
+    powerMonitor.on("suspend", () => {
+      recorder.isRecording() && log.info("==> ipcEvents", "suspend");
+
+      pauseRecordingNow();
+    });
+    powerMonitor.on("user-did-resign-active", () => {
+      recorder.isRecording() &&
+        log.info("==> ipcEvents", "user-did-resign-active");
+
+      pauseRecordingNow();
+    });
+
+    powerMonitor.on("resume", () => {
+      recorder.isRecording() && log.info("==> ipcEvents", "resume");
+
+      resumeRecordingNow();
+    });
+    powerMonitor.on("unlock-screen", () => {
+      recorder.isRecording() && log.info("==> ipcEvents", "unlock-screen");
+
+      resumeRecordingNow();
+    });
+    powerMonitor.on("user-did-become-active", () => {
+      recorder.isRecording() &&
+        log.info("==> ipcEvents", "user-did-become-active");
+      resumeRecordingNow();
+    });
+    recorder.isRecording() &&
+      log.info("==> ipcEvents", "registered ipc events ");
+  } catch (error) {
+    log.info("==> ipcEvents", error);
+  }
 }
