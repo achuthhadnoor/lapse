@@ -182,7 +182,7 @@ const IndexPage = () => {
               on how to enable{" "}
             </p>
             <u
-              className="text-neutral-400 w-full p-1 cursor-pointer"
+              className="no-drag text-neutral-400 w-full p-1 cursor-pointer"
               onClick={() => {
                 window.electron.ipcRenderer.navigate(
                   "https://achuth.notion.site/Press-Kit-1a3b994e395d43efbaf6727fed4429f1"

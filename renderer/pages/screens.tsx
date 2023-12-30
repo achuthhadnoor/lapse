@@ -50,7 +50,7 @@ export default function Screens() {
   return (
     <>
       {loading ? (
-        <div className="flex justify-center h-screen items-center w-full">
+        <div className="dark:bg-[#222] bg-neutral-200 flex justify-center h-screen items-center w-full">
           <svg
             className="animate-spin  -ml-1 mr-3 h-5 w-5 text-white"
             xmlns="http://www.w3.org/2000/svg"
@@ -74,7 +74,7 @@ export default function Screens() {
           <span className="text-neutral-400">Fetching your screens..</span>
         </div>
       ) : (
-        <div className=" flex flex-col  text-neutral-800 dark:text-neutral-100 h-screen pb-5">
+        <div className="dark:bg-[#222] bg-neutral-200  flex flex-col  text-neutral-800 dark:text-neutral-100 h-screen pb-5">
           <div className="flex items-center justify-between p-4 ">
             <div className="dragable flex-1">Select Screen</div>
             <div className="flex gap-2 align-middle text-neutral-800 dark:text-neutral-100">
