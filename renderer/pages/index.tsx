@@ -221,7 +221,7 @@ const IndexPage = () => {
                   : "dark:border-neutral-600 border-neutral-300",
                 "my-2 px-[10px] py-[15px] rounded-md no-drag border-2 outline-none accent-green-500 w-full   bg-transparent text-neutral-900 dark:text-neutral-200"
               )}
-              placeholder="lapse_XXXX-XXXX-XXXX-XXXX..."
+              placeholder="XXXX-XXXX-XXXX-XXXX..."
               id="license_input"
               value={licenseKey}
               onChange={(e: any) => {
@@ -270,7 +270,7 @@ const IndexPage = () => {
                   </u>
                 </span>
               </label>
-              <label className="flex align-middle items-center gap-1  text-sm">
+              <label className="hidden flex align-middle items-center gap-1  text-sm ">
                 <input
                   type="checkbox"
                   id="license_data"

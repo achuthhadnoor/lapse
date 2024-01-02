@@ -1,7 +1,6 @@
 import { app, dialog, shell } from "electron";
 import { is, enforceMacOSAppLocation } from "electron-util";
 import prepareNext from "electron-next";
-
 import "./windows/load";
 import "./utils/recorder";
 import initializeIPCEvents from "./ipcEvents";
@@ -11,6 +10,9 @@ import { loadAppData } from "./utils/store";
 import { tray } from "./utils/tray";
 import { recorder } from "./utils/recorder";
 import log from "./utils/logger";
+
+// Check open state to avoid duplicate app launches
+checkIfAppIsOpen();
 
 log.info("Starting the application...");
 // Handle unhandled promise rejections globally
@@ -29,9 +31,6 @@ process.on("uncaughtException", (error) => {
 
 app.allowRendererProcessReuse = true;
 
-// Check open state to avoid duplicate app launches
-checkIfAppIsOpen();
-
 // Load app data
 loadAppData();
 
@@ -40,7 +39,7 @@ initializeIPCEvents();
 
 async function setupApp() {
   // Disable CORS to send API request from the browserView
-  app.commandLine.appendSwitch("disable-features", "CrossOriginOpenerPolicy");
+  // app.commandLine.appendSwitch("disable-features", "CrossOriginOpenerPolicy");
 
   // About panel when the user presses the space bar on the app icon
   app.setAboutPanelOptions({ copyright: "Copyright © lapse" });
@@ -63,13 +62,6 @@ async function setupApp() {
     log.error("Error loading renderer:", error);
   }
 
-  // Check for updates
-  // Check for permissions & verify the user to start using the app
-  // if (!ensureScreenCapturePermissions()) {
-  //   log.info("==> permissions : no permissions found");
-  //   return;
-  // }
-
   // Perform additional setup if the user is verified
   if (app.lapse.user.isVerified) {
     handleVerifiedUser();
@@ -81,7 +73,6 @@ async function setupApp() {
   if (!is.development) {
     // Enable auto-launch if configured
     app.lapse.settings.autolaunch && autoLauncher.enable();
-
     // Check for updates
     checkUpdates();
   }
@@ -106,8 +97,9 @@ function handleUnverifiedUser() {
 }
 
 app.on("window-all-closed", () => {
-  // do not quit app
+  if (!app.lapse.user.isVerified) app.quit();
 });
+
 // Pause and ask the user to save recording or not before quitting
 app.on("before-quit", async () => {
   // ! Pause and ask user to save recording or not
