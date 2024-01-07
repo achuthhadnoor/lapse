@@ -1,9 +1,9 @@
 {
   "name": "fastforward",
-  "version": "1.0.3",
+  "version": "1.0.7",
   "private": true,
   "main": "main/index.js",
-  "productName": "Lapse",
+  "productName": "Fast Forward",
   "description": "A minimal time-lapse screen recording tool for mac and windows",
   "author": "Achuth Hadnoor <hey@achuth.dev> (https://achuth.dev)",
   "repository": "https://github.com/achuthhadnoor/lapse_www",

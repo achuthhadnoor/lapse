@@ -17,7 +17,8 @@ export const loadAppData = () => {
     store.set("lapse-user", app.lapse.user);
   }
   if (store.get("lapse-settings")) {
-    app.lapse.settings = store.get("lapse-settings");
+    const sett: any = store.get("lapse-settings");
+    app.lapse.settings = { ...app.lapse.settings, ...sett };
   } else {
     store.set("lapse-settings", app.lapse.settings);
   }
