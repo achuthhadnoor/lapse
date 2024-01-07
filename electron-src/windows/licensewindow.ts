@@ -1,10 +1,10 @@
 import { BrowserWindow, ipcMain } from "electron";
 import { join } from "path";
 import { format } from "url";
-import { hostname, platform } from "os";
 import { windowManager } from "./windowManager";
 import { is } from "electron-util";
 import log from "../utils/logger";
+import { uniqueName } from "../utils/constants";
 
 let window: BrowserWindow | null = null,
   isOpen = false;
@@ -17,7 +17,7 @@ const createBrowserWindow = () => {
     fullscreen: false,
     resizable: false,
     frame: false,
-    transparent: platform() === "darwin" ? true : false,
+    transparent: is.macos,
     vibrancy: "sidebar",
     titleBarStyle: "customButtonsOnHover",
     trafficLightPosition: { x: 16, y: 16 },
@@ -48,8 +48,8 @@ const close = () => {
 const windowOpenCheck = () => isOpen;
 
 ipcMain.handle("get-hostname", (_e, _args) => {
-  log.info(hostname());
-  return hostname();
+  log.info(uniqueName);
+  return uniqueName;
 });
 
 export default windowManager.setLicenseWindow({

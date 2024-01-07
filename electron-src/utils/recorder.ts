@@ -8,7 +8,6 @@ import {
 } from "electron";
 import { track, cleanupSync, mkdir } from "temp";
 import { join } from "path";
-import { platform } from "os";
 import { writeFileSync, existsSync } from "fs";
 import { format } from "url";
 import { fixPathForAsarUnpack, is } from "electron-util";
@@ -333,7 +332,7 @@ export class ScreenRecorder {
           resizable: false,
           frame: false,
           alwaysOnTop: true,
-          transparent: platform() === "darwin",
+          transparent: is.macos,
           vibrancy: "sidebar",
           skipTaskbar: true,
           hiddenInMissionControl: true,

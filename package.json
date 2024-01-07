@@ -1,11 +1,16 @@
 {
-  "name": "lapse",
-  "version": "1.0.6",
+  "name": "fastforward",
+  "version": "1.0.3",
   "private": true,
   "main": "main/index.js",
   "productName": "Lapse",
   "description": "A minimal time-lapse screen recording tool for mac and windows",
   "author": "Achuth Hadnoor <hey@achuth.dev> (https://achuth.dev)",
+  "repository": "https://github.com/achuthhadnoor/lapse_www",
+  "release": {
+    "provider": "github",
+    "releaseType": "release"
+  },
   "scripts": {
     "start": "next build renderer && next start renderer",
     "clean": "rimraf dist main renderer/out renderer/.next",
@@ -25,6 +30,7 @@
     "electron-log": "^5.0.1",
     "electron-next": "^3.1.5",
     "electron-store": "^8.1.0",
+    "electron-updater": "^6.1.7",
     "electron-util": "^0.17.2",
     "fluent-ffmpeg": "^2.1.2",
     "mac-windows": "^1.0.0",

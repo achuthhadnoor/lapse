@@ -1,7 +1,6 @@
 import { BrowserWindow } from "electron";
 import { join } from "path";
 import { format } from "url";
-import { platform } from "os";
 import { windowManager } from "./windowManager";
 import { is } from "electron-util";
 
@@ -19,7 +18,7 @@ const createBrowserWindow = () => {
     resizable: false,
     frame: false,
     alwaysOnTop: true,
-    transparent: platform() === "darwin" ? true : false,
+    transparent: is.macos,
     vibrancy: "sidebar",
     webPreferences: {
       // devTools: true,

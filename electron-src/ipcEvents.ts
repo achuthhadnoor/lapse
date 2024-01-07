@@ -1,13 +1,15 @@
-import { app, ipcMain, powerMonitor, net } from "electron";
+import { app, ipcMain, powerMonitor, net, dialog } from "electron";
 import { store } from "./utils/store";
 import { windowManager } from "./windows/windowManager";
 import { recorder } from "./utils/recorder";
 import { tray } from "./utils/tray";
 import log from "./utils/logger";
+import { uniqueName } from "./utils/constants";
 
 export const verifyUser = () => {
   const url = "https://getlapseapp.com/api/verify";
   const params = new URLSearchParams({
+    host: uniqueName,
     email: "example@example.com",
     license: "12345",
   });
@@ -104,6 +106,20 @@ export default function init() {
         log.info("==> ipcEvents", "user-did-become-active");
       resumeRecordingNow();
     });
+    // Handle unhandled promise rejections globally
+    process.on("unhandledRejection", (reason, promise) => {
+      log.error("Unhandled Promise Rejection at:", promise, "reason:", reason);
+    });
+    // Set up error handling for the renderer process
+    process.on("uncaughtException", (error) => {
+      log.error("Uncaught Exception:", error);
+      dialog.showErrorBox(
+        "Application Error",
+        "The application encountered an error and will close."
+      );
+      app.quit();
+    });
+
     recorder.isRecording() &&
       log.info("==> ipcEvents", "registered ipc events ");
   } catch (error) {

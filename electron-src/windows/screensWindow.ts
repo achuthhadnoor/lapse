@@ -1,7 +1,6 @@
 import { BrowserWindow, ipcMain } from "electron";
 import { join } from "path";
 import { format } from "url";
-import { platform } from "os";
 import { windowManager } from "./windowManager";
 import { is } from "electron-util";
 // const { activateWindow } = require("mac-windows");
@@ -20,9 +19,9 @@ const createBrowserWindow = () => {
     resizable: false,
     frame: false,
     alwaysOnTop: true,
-    transparent: platform() === "darwin" ? true : false,
+    transparent: is.macos,
     vibrancy: "sidebar",
-    skipTaskbar:true,
+    skipTaskbar: true,
     hiddenInMissionControl: true,
     webPreferences: {
       nodeIntegration: true,

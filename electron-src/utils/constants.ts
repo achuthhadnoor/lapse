@@ -1,5 +1,8 @@
 import { app } from "electron";
 import { is } from "electron-util";
+import { hostname } from "os";
+
+export const uniqueName = hostname();
 
 export const USER_DEFAULT = is.development
   ? {
@@ -40,6 +43,7 @@ export const SETTINGS_DEFAULT = {
   askSavePath: false,
   lapse_recording_count: 0,
   failed_recordings_count: 0,
+  updateAvailable: false,
 };
 export const INTERVALS = [2, 3, 4, 5];
 export const RECORDER_STATE = {

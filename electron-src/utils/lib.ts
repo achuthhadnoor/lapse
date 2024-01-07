@@ -3,7 +3,7 @@ import { is } from "electron-util";
 import { join } from "path";
 import { format } from "url";
 import AutoLaunch from "auto-launch";
-import { store, updateStoreSettings } from "./store";
+import { updateStoreSettings } from "./store";
 import { tray } from "./tray";
 import { recorder } from "./recorder";
 
@@ -87,18 +87,18 @@ export const sendUpdateRequest = (click: boolean) => {
 };
 
 export const checkUpdates = () => {
-  if (store.get("lapse-updateDate")) {
-    const savedDate = store.get("lapse-updateDate");
-    const dates = new Date();
-    const dateString = `${dates.getDate()}-${dates.getMonth()}-${dates.getFullYear()}`;
-    if (savedDate !== dateString) {
-      sendUpdateRequest(false);
-    }
-  } else {
-    const dates = new Date();
-    const dateString = `${dates.getDate()}-${dates.getMonth()}-${dates.getFullYear()}`;
-    store.set("lapse-updateDate", dateString);
-  }
+  // if (store.get("lapse-updateDate")) {
+  //   const savedDate = store.get("lapse-updateDate");
+  //   const dates = new Date();
+  //   const dateString = `${dates.getDate()}-${dates.getMonth()}-${dates.getFullYear()}`;
+  //   if (savedDate !== dateString) {
+  //     sendUpdateRequest(false);
+  //   }
+  // } else {
+  //   const dates = new Date();
+  //   const dateString = `${dates.getDate()}-${dates.getMonth()}-${dates.getFullYear()}`;
+  //   store.set("lapse-updateDate", dateString);
+  // }
 };
 
 export const createTempWindow = ({ windowOptions, screenName, func }: any) => {

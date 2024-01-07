@@ -1,33 +1,22 @@
 import { app, dialog, shell } from "electron";
-import { is, enforceMacOSAppLocation } from "electron-util";
 import prepareNext from "electron-next";
+import { enforceMacOSAppLocation, is } from "electron-util";
+
+import "./utils/update";
 import "./windows/load";
-import "./utils/recorder";
+
 import initializeIPCEvents from "./ipcEvents";
-import { windowManager } from "./windows/windowManager";
-import { autoLauncher, checkIfAppIsOpen, checkUpdates } from "./utils/lib";
+import { autoLauncher, checkIfAppIsOpen } from "./utils/lib";
+import log from "./utils/logger";
 import { loadAppData } from "./utils/store";
 import { tray } from "./utils/tray";
+import { windowManager } from "./windows/windowManager";
 import { recorder } from "./utils/recorder";
-import log from "./utils/logger";
 
 // Check open state to avoid duplicate app launches
 checkIfAppIsOpen();
 
 log.info("Starting the application...");
-// Handle unhandled promise rejections globally
-process.on("unhandledRejection", (reason, promise) => {
-  log.error("Unhandled Promise Rejection at:", promise, "reason:", reason);
-});
-// Set up error handling for the renderer process
-process.on("uncaughtException", (error) => {
-  log.error("Uncaught Exception:", error);
-  dialog.showErrorBox(
-    "Application Error",
-    "The application encountered an error and will close."
-  );
-  app.quit();
-});
 
 app.allowRendererProcessReuse = true;
 
@@ -73,8 +62,6 @@ async function setupApp() {
   if (!is.development) {
     // Enable auto-launch if configured
     app.lapse.settings.autolaunch && autoLauncher.enable();
-    // Check for updates
-    checkUpdates();
   }
 }
 

@@ -1,32 +1,30 @@
 import {
+  app,
   BrowserWindow,
+  dialog,
   Menu,
   MenuItemConstructorOptions,
-  Tray,
-  app,
-  dialog,
-  shell,
   screen,
+  shell,
+  Tray,
 } from "electron";
-
-import { recorder } from "./recorder";
-import { INTERVALS, RECORDER_STATE } from "./constants";
 import { is } from "electron-util";
+import { join } from "path";
+import { format } from "url";
+import { INTERVALS, RECORDER_STATE } from "./constants";
 import {
-  getGlobalShortCut,
-  autoLauncher,
-  sendUpdateRequest,
-  updateSettings,
   appIcon,
+  autoLauncher,
+  getGlobalShortCut,
+  loadingIcon,
+  pauseIcon,
   recordIcon,
   trimSavedPath,
-  pauseIcon,
-  loadingIcon,
+  updateSettings,
 } from "./lib";
-
-import { format } from "url";
-import { join } from "path";
 import log, { openLogFile } from "./logger";
+import { recorder } from "./recorder";
+import { DownloadUpdate } from "./update";
 
 export class TrayManager {
   menubar?: Tray;
@@ -332,10 +330,6 @@ export class TrayManager {
 
     const appSettingsItems: MenuItemConstructorOptions[] = [
       {
-        label: `Version ${app.getVersion()}`,
-        enabled: false,
-      },
-      {
         label: "Changelog",
         click: () => {
           shell.openExternal(
@@ -363,12 +357,6 @@ export class TrayManager {
               autoLauncher.disable();
             }
           }
-        },
-      },
-      {
-        label: "Check for updates",
-        click: () => {
-          sendUpdateRequest(true);
         },
       },
       {
@@ -407,6 +395,15 @@ export class TrayManager {
         label: "Quit",
         role: "quit",
         accelerator: "meta+q",
+      },
+      {
+        label: app.lapse.settings.updateAvailable
+          ? "Click to install update"
+          : `Version ${app.getVersion()}`,
+        enabled: app.lapse.settings.updateAvailable,
+        click: () => {
+          DownloadUpdate();
+        },
       },
     ];
     return Menu.buildFromTemplate(template);
