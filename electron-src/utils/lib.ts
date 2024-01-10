@@ -14,7 +14,6 @@ export const autoLauncher = new AutoLaunch({
 
 export const checkIfAppIsOpen = () => {
   const gotTheLock = app.requestSingleInstanceLock();
-
   if (!gotTheLock) {
     app.quit();
   } else {

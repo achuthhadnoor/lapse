@@ -69,9 +69,8 @@ export class TrayManager {
             cancelId: 1,
           });
           if (response === 0) {
-            log.info("Retake!");
-            recorder.initVariables();
-            recorder.startRecording();
+            log.info("Retake recording!");
+            recorder.retakeRecording();
           }
         },
       },

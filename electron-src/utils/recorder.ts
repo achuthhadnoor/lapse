@@ -46,18 +46,6 @@ export class ScreenRecorder {
     this.recorderSettings = { ...this.defaultSettings };
   }
 
-  getRecordingState() {
-    return this.recorderSettings.recordState;
-  }
-
-  isRecording() {
-    if (this.recorderSettings.recordState !== RECORDER_STATE.idle) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
   initVariables() {
     this.clearScreenshotInterval();
     cleanupSync();
@@ -70,6 +58,10 @@ export class ScreenRecorder {
     };
     tray.setIdleTrayMenu();
   }
+
+  getRecordingState = () => this.recorderSettings.recordState;
+
+  isRecording = () => this.recorderSettings.recordState !== RECORDER_STATE.idle;
 
   clearScreenshotInterval() {
     if (this.screenshotInterval) {
@@ -222,26 +214,6 @@ export class ScreenRecorder {
     }
   }
 
-  stopRecording() {
-    try {
-      this.clearScreenshotInterval();
-      this.recorderSettings.recordState = RECORDER_STATE.rendering;
-      tray.setRenderingTrayMenu();
-      if (app.lapse.settings.askSavePath) {
-        windowManager.save?.open();
-      } else {
-        const outputPath = this.getVideoOutputPath();
-        this.prepareVideo(outputPath);
-      }
-    } catch (err: any) {
-      const failed = app.lapse.settings.failed_recordings_count || 0;
-      updateSettings({
-        failed_recordings_count: failed + 1,
-      });
-      console.error(`An unexpected error occurred: ${err.message}`);
-    }
-  }
-
   handleRecordingError(errorMessage: string) {
     console.error(errorMessage);
     showNotification(errorMessage);
@@ -299,18 +271,6 @@ export class ScreenRecorder {
 
     return numberedFilePath;
   }
-
-  pauseRecording = () => {
-    log.info("Paused!");
-    this.recorderSettings.recordState = RECORDER_STATE.paused;
-    this.clearScreenshotInterval();
-    tray.setPausedTrayMenu();
-  };
-
-  resumeRecording = () => {
-    this.recorderSettings.recordState = RECORDER_STATE.recording;
-    this.createScreenshotInterval(this.recorderSettings.sourceId);
-  };
 
   async selectSource() {
     try {
@@ -400,7 +360,9 @@ export class ScreenRecorder {
 
   async startRecording() {
     this.clearScreenshotInterval();
+
     this.recorderSettings.sourceId = await this.selectSource();
+
     this.recorderSettings.frameCount = 0;
 
     if (this.recorderSettings.sourceId) {
@@ -428,6 +390,43 @@ export class ScreenRecorder {
       } else {
         this.createScreenshotInterval(this.recorderSettings.sourceId);
       }
+    }
+  }
+
+  pauseRecording() {
+    log.info("Paused!");
+    this.recorderSettings.recordState = RECORDER_STATE.paused;
+    this.clearScreenshotInterval();
+    tray.setPausedTrayMenu();
+  }
+
+  resumeRecording() {
+    this.recorderSettings.recordState = RECORDER_STATE.recording;
+    this.createScreenshotInterval(this.recorderSettings.sourceId);
+  }
+
+  retakeRecording() {
+    this.initVariables();
+    this.startRecording();
+  }
+
+  stopRecording() {
+    try {
+      this.clearScreenshotInterval();
+      this.recorderSettings.recordState = RECORDER_STATE.rendering;
+      tray.setRenderingTrayMenu();
+      if (app.lapse.settings.askSavePath) {
+        windowManager.save?.open();
+      } else {
+        const outputPath = this.getVideoOutputPath();
+        this.prepareVideo(outputPath);
+      }
+    } catch (err: any) {
+      const failed = app.lapse.settings.failed_recordings_count || 0;
+      updateSettings({
+        failed_recordings_count: failed + 1,
+      });
+      console.error(`An unexpected error occurred: ${err.message}`);
     }
   }
 }
