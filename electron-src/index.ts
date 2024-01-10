@@ -2,6 +2,7 @@ import { app } from "electron";
 import startupApp from "./app";
 import { checkIfAppIsOpen } from "./utils/lib";
 
+// check for other instance
 checkIfAppIsOpen();
 
 app.allowRendererProcessReuse = true;
