@@ -50,39 +50,50 @@ export class TrayManager {
       {
         label: "Resume Recording",
         click: () => {
-          this.menubar?.setImage(recordIcon);
-          this.menubar?.setToolTip("Recording..");
-          recorder.resumeRecording();
-          log.info("Resumed!");
+          try {
+            this.menubar?.setImage(recordIcon);
+            this.menubar?.setToolTip("Recording..");
+            recorder.resumeRecording();
+            log.info("Resumed!");
+          } catch (error) {
+            log.error("Error resuming recording:", error);
+          }
         },
       },
       { type: "separator" },
       {
         label: "Retake Recording ",
         click: async () => {
-          // show dialog box to check if they really want to retake again
-          const { response } = await dialog.showMessageBox({
-            type: "warning",
-            buttons: ["Retake Recording", "Cancel"],
-            defaultId: 0,
-            message: "Do you want to Restart the recording?",
-            detail:
-              "Retake will delete the recording till now and restart. Do you want to continue?",
-            cancelId: 1,
-          });
-          if (response === 0) {
-            log.info("Retake!");
-            recorder.initVariables();
-            recorder.startRecording();
+          try {
+            const { response } = await dialog.showMessageBox({
+              type: "warning",
+              buttons: ["Retake Recording", "Cancel"],
+              defaultId: 0,
+              message: "Do you want to Restart the recording?",
+              detail:
+                "Retake will delete the recording till now and restart. Do you want to continue?",
+              cancelId: 1,
+            });
+            if (response === 0) {
+              log.info("Retake!");
+              recorder.initVariables();
+              recorder.startRecording();
+            }
+          } catch (error) {
+            log.error("Error retaking recording:", error);
           }
         },
       },
       {
         label: "Stop Recording",
         click: () => {
-          this.menubar?.setImage(appIcon);
-          this.menubar?.setToolTip("Lapse | timelapse screen recorder");
-          recorder.stopRecording();
+          try {
+            this.menubar?.setImage(appIcon);
+            this.menubar?.setToolTip("Lapse | timelapse screen recorder");
+            recorder.stopRecording();
+          } catch (error) {
+            log.error("Error stopping recording:", error);
+          }
         },
       },
     ];
@@ -115,7 +126,7 @@ export class TrayManager {
           try {
             updateSettings({ intervals: option });
           } catch (error) {
-            console.error("Error updating settings:", error);
+            log.error("Error updating settings:", error);
           }
         },
       }));
@@ -134,7 +145,11 @@ export class TrayManager {
         type: "checkbox",
         checked: countdown,
         click: () => {
-          updateSettings({ countdown: !countdown });
+          try {
+            updateSettings({ countdown: !countdown });
+          } catch (error) {
+            log.error("Error updating settings:", error);
+          }
         },
       },
       {
@@ -151,7 +166,7 @@ export class TrayManager {
           try {
             updateSettings({ format: option });
           } catch (error) {
-            console.error("Error updating settings:", error);
+            log.error("Error updating settings:", error);
           }
         },
       }));
@@ -167,7 +182,7 @@ export class TrayManager {
           try {
             updateSettings({ quality: option });
           } catch (error) {
-            console.error("Error updating settings:", error);
+            log.error("Error updating settings:", error);
           }
         },
       }));
@@ -183,7 +198,7 @@ export class TrayManager {
           try {
             updateSettings({ framerate: option });
           } catch (error) {
-            console.error("Error updating settings:", error);
+            log.error("Error updating settings:", error);
           }
         },
       }));
@@ -221,7 +236,11 @@ export class TrayManager {
         checked: askSavePath,
         type: "checkbox",
         click: () => {
-          updateSettings({ askSavePath: !askSavePath });
+          try {
+            updateSettings({ askSavePath: !askSavePath });
+          } catch (error) {
+            log.error("Error updating settings:", error);
+          }
         },
       },
       {
@@ -274,7 +293,7 @@ export class TrayManager {
                   dialogWindow = null;
                 })
                 .catch((err) => {
-                  console.log(err);
+                  log.error("Error showing open dialog:", err);
                   // Close the dialog window
                   dialogWindow?.close();
                   dialogWindow = null;
@@ -355,20 +374,28 @@ export class TrayManager {
         type: "checkbox",
         checked: autolaunch,
         click: () => {
-          updateSettings({ autolaunch: !autolaunch });
-          if (!is.development) {
-            if (autolaunch) {
-              autoLauncher.enable();
-            } else {
-              autoLauncher.disable();
+          try {
+            updateSettings({ autolaunch: !autolaunch });
+            if (!is.development) {
+              if (autolaunch) {
+                autoLauncher.enable();
+              } else {
+                autoLauncher.disable();
+              }
             }
+          } catch (error) {
+            log.error("Error updating autolaunch setting:", error);
           }
         },
       },
       {
         label: "Check for updates",
         click: () => {
-          sendUpdateRequest(true);
+          try {
+            sendUpdateRequest(true);
+          } catch (error) {
+            log.error("Error checking for updates:", error);
+          }
         },
       },
       {
@@ -390,10 +417,10 @@ export class TrayManager {
             recorder.startRecording().then(() => {
               this.menubar?.setImage(recordIcon);
               this.menubar?.setToolTip("Recording...");
-              console.log("==> Recording", `Recording: Started`);
+              log.info("Recording: Started");
             });
           } catch (error) {
-            console.error("Error starting recording:", error);
+            log.error("Error starting recording:", error);
           }
         },
       },
@@ -436,7 +463,7 @@ export class TrayManager {
             this.setPausedTrayMenu();
             break;
           case RECORDER_STATE.rendering:
-            // setRenderingTray();
+            this.setRenderingTrayMenu();
             break;
           default:
             this.menubar?.popUpContextMenu(this.getIdleContextMenu());
@@ -446,7 +473,7 @@ export class TrayManager {
         log.error("Error handling tray click:", error);
       }
     });
-    log.info("==> Tray", "tray initialized");
+    log.info("Tray initialized");
   };
 }
 

@@ -45,6 +45,10 @@ export class ScreenRecorder {
     this.screenshotInterval = null;
     this.sourcesWindow = null;
     this.recorderSettings = { ...this.defaultSettings };
+    // Check if the previous state was recording
+    if (app.lapse.settings.previousState === RECORDER_STATE.recording) {
+      this.startRecording();
+    }
   }
 
   getRecordingState() {
@@ -108,7 +112,7 @@ export class ScreenRecorder {
           );
         }
       } catch (error) {
-        console.error("Error during screenshot interval:", error);
+        log.error("Error during screenshot interval:", error);
       }
     }, app.lapse.settings.intervals * 1000);
   }
@@ -239,12 +243,12 @@ export class ScreenRecorder {
       updateSettings({
         failed_recordings_count: failed + 1,
       });
-      console.error(`An unexpected error occurred: ${err.message}`);
+      log.error(`An unexpected error occurred: ${err.message}`);
     }
   }
 
   handleRecordingError(errorMessage: string) {
-    console.error(errorMessage);
+    log.error(errorMessage);
     showNotification(errorMessage);
     this.initVariables();
   }
@@ -394,7 +398,7 @@ export class ScreenRecorder {
         });
       });
     } catch (error) {
-      console.error(`Error selecting source: ${error}`);
+      log.error(`Error selecting source: ${error}`);
       throw error;
     }
   }
@@ -413,7 +417,7 @@ export class ScreenRecorder {
         },
         (err: any, dirPath: any) => {
           if (err) {
-            console.error("Error creating image directory", err);
+            log.error("Error creating image directory", err);
             throw err;
           }
           this.recorderSettings.ffmpegImgPattern = join(dirPath, "lapse%d.png");
@@ -465,7 +469,7 @@ ipcMain.handle("get-sources", async () => {
 
     return JSON.stringify(srcs);
   } catch (error) {
-    console.error(`Error getting sources: ${error}`);
+    log.error(`Error getting sources: ${error}`);
     throw error;
   }
 });

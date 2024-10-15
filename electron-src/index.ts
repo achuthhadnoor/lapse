@@ -10,6 +10,7 @@ import { loadAppData } from "./utils/store";
 import { tray } from "./utils/tray";
 import { recorder } from "./utils/recorder";
 import log from "./utils/logger";
+import { RECORDER_STATE } from "./utils/constants";
 
 // Check open state to avoid duplicate app launches
 checkIfAppIsOpen();
@@ -102,25 +103,32 @@ app.on("window-all-closed", () => {
 
 // Pause and ask the user to save recording or not before quitting
 app.on("before-quit", async () => {
-  // ! Pause and ask user to save recording or not
-  // ? Prompt the user to save recording before quit
   log.info("recorder state", recorder.getRecordingState());
   if (recorder.isRecording()) {
     const { response } = await dialog.showMessageBox({
       type: "warning",
       buttons: ["Save recording", "Cancel"],
       defaultId: 0,
-      message: "Do you want to Save the recording?",
-      detail:
-        "Cancel will delete the recording till now. Do you want to continue?",
-      cancelId: 1,
+      message: "Do you want to save the recording before quitting?",
     });
     if (response === 0) {
-      recorder.stopRecording();
+      // Save the recording state
+      app.lapse.settings.previousState = RECORDER_STATE.recording;
+      await recorder.stopRecording();
     } else {
-      recorder.initVariables();
-      app.quit();
+      app.lapse.settings.previousState = RECORDER_STATE.idle;
     }
+  } else {
+    app.lapse.settings.previousState = RECORDER_STATE.idle;
+  }
+});
+
+app.on("ready", async () => {
+  // Other initialization code...
+
+  // Check if the previous state was recording
+  if (app.lapse.settings.previousState === RECORDER_STATE.recording) {
+    await recorder.startRecording();
   }
 });
 

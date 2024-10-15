@@ -53,48 +53,50 @@ export const screenCaptureFallback = promptSystemPreferences({
   systemPreferencesPath: "Privacy_ScreenCapture",
 });
 
-export const ensureScreenCapturePermissions = async () =>
-  // fallback = screenCaptureFallback
-  {
-    if (is.macos) {
-      log.info("==> OS", "macOs");
-      log.info(
-        "==> permissions",
-        systemPreferences.getMediaAccessStatus("screen")
-      );
-      const hasAccess =
-        systemPreferences.getMediaAccessStatus("screen") === "granted"
-          ? true
-          : false;
+export const ensureScreenCapturePermissions = async () => {
+  if (is.macos) {
+    log.info("==> OS", "macOS");
+    const macVersion = process.getSystemVersion();
+    log.info("==> macOS Version", macVersion);
 
-      if (hasAccess) {
-        return true;
-      }
-      // fallback();
-      const { response } = await dialog.showMessageBox({
-        type: "error",
-        buttons: ["Quit Lapse"],
-        defaultId: 0,
-        message: "Screen Recording Permission Required for Lapse",
-        detail: `To enable screen recording, please grant permission in your system settings.
-
-       Open 'System Preferences' on your Mac.
-       Navigate to 'Security & Privacy.'
-       Select the 'Privacy' tab.
-       In the left sidebar, click on 'Screen and system audio Recording.'
-       Check the box next to the application that requires screen recording.
-       After granting permission, restart the application.
-       
-       Thank you for your understanding and cooperation.`,
-        cancelId: 1,
-      });
-      if (response) {
-        app.quit();
-      }
-      return false;
+    let hasAccess = false;
+    if (macVersion >= "10.15") {
+      hasAccess =
+        systemPreferences.getMediaAccessStatus("screen") === "granted";
     } else {
-      log.info("==> OS", "windows or linux");
+      hasAccess =
+        systemPreferences.getMediaAccessStatus("screen") === "granted" ||
+        systemPreferences.getMediaAccessStatus("screen") === "unknown";
+    }
 
+    if (hasAccess) {
       return true;
     }
-  };
+
+    const { response } = await dialog.showMessageBox({
+      type: "error",
+      buttons: ["Quit Lapse"],
+      defaultId: 0,
+      message: "Screen Recording Permission Required for Lapse",
+      detail: `To enable screen recording, please grant permission in your system settings.
+
+      Open 'System Preferences' on your Mac.
+      Navigate to 'Security & Privacy.'
+      Select the 'Privacy' tab.
+      In the left sidebar, click on 'Screen and system audio Recording.'
+      Check the box next to the application that requires screen recording.
+      After granting permission, restart the application.
+      
+      Thank you for your understanding and cooperation.`,
+      cancelId: 1,
+    });
+
+    if (response) {
+      app.quit();
+    }
+    return false;
+  } else {
+    log.info("==> OS", "windows or linux");
+    return true;
+  }
+};
