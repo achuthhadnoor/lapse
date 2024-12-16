@@ -1,4 +1,4 @@
-import { app, dialog, shell } from "electron";
+import { app, dialog, shell, systemPreferences } from "electron";
 import { is, enforceMacOSAppLocation } from "electron-util";
 import prepareNext from "electron-next";
 import log from "./utils/logger";
@@ -12,6 +12,36 @@ import { autoLauncher, checkIfAppIsOpen, checkUpdates } from "./utils/lib";
 import { loadAppData } from "./utils/store";
 import { tray } from "./utils/tray";
 import { recorder } from "./utils/recorder";
+import { exec } from "child_process";
+
+log.info("screen", systemPreferences.getMediaAccessStatus("screen"));
+if (!systemPreferences.getMediaAccessStatus("screen")) {
+  shell.openExternal(
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+  );
+}
+
+// Function to check screen recording permission
+function checkScreenRecordingPermission() {
+  exec("tccutil check ScreenCapture", (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`stderr: ${stderr}`);
+      return;
+    }
+
+    if (stdout.includes("kTCCServiceScreenCapture: ALLOWED")) {
+      console.log("Screen recording permission granted");
+    } else {
+      console.log("Screen recording permission denied");
+    }
+  });
+}
+
+checkScreenRecordingPermission();
 
 log.info("Starting the application...");
 // Handle unhandled promise rejections globally
@@ -28,18 +58,18 @@ process.on("uncaughtException", (error) => {
   app.quit();
 });
 
-app.allowRendererProcessReuse = true;
-
 // Check open state to avoid duplicate app launches
 checkIfAppIsOpen();
 
 // Load app data
 loadAppData();
-
 // Initialize IPC Events
 initializeIPCEvents();
 
-async function setupApp() {
+export async function setupApp() {
+  console.log("====================================");
+  console.log("yooo");
+  console.log("====================================");
   // Disable CORS to send API request from the browserView
   app.commandLine.appendSwitch("disable-features", "CrossOriginOpenerPolicy");
 
@@ -88,6 +118,8 @@ async function setupApp() {
   }
 }
 
+app.on("ready", setupApp);
+
 export function handleVerifiedUser() {
   // Additional logic for verified users
   // Hide the dock icon to shift the user focus to the menubar
@@ -134,4 +166,3 @@ app.on("before-quit", async () => {
 });
 
 // Main application setup
-app.whenReady().then(setupApp);

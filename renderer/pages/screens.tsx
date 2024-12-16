@@ -88,9 +88,9 @@ export default function Screens() {
           <span className="text-neutral-400">Fetching your screens..</span>
         </div>
       ) : (
-        <div className="flex flex-col dragable text-neutral-800 dark:text-neutral-100 h-screen pb-5">
+        <div className="flex flex-col  text-neutral-800 dark:text-neutral-100 h-screen pb-5">
           <div className="flex items-center justify-between p-4">
-            <div>Select Screen</div>
+            <div className="flex-1 dragable">Select Screen</div>
             <div className="flex gap-2 align-middle text-neutral-800 dark:text-neutral-100">
               <span className="p-2" onClick={getSources}>
                 <svg
